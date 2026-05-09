@@ -1,0 +1,2 @@
+# logizone-app
+
