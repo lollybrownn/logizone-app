@@ -9,6 +9,7 @@ import { HiOutlineDocumentReport } from "react-icons/hi";
 import { GoStack } from "react-icons/go";
 import { GoPeople } from "react-icons/go";
 
+
 const SidebarHeader = () => {
   return (
     <div className="flex flex-row pt-5 pl-5 gap-3">
@@ -19,6 +20,14 @@ const SidebarHeader = () => {
         <h3 className="text-sm font-semibold">LogiZone</h3>
         <h3 className="text-xs font-normal">WMS SUITE</h3>
       </div>
+    </div>
+  )
+}
+
+const SidebarFooter = () => {
+  return (
+    <div>
+
     </div>
   )
 }
@@ -77,6 +86,8 @@ export const Sidebar = () => {
         <SidebarItem icon={LuWarehouse} label="Gudang Induk" />
         <SidebarItem icon={GoPeople} label="Manajemen Akun" />
       </SidebarSection>
+      <hr className="text-[#2A345B]" />
+
     </div>
   )
 }
