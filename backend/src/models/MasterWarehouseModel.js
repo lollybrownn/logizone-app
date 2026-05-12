@@ -13,7 +13,7 @@ const MasterWarehouseModel = {
   },
   async findByName(name) {
     const sql = "SELECT * from Gudang_Indul where nama = ?";
-    const [rows] = db.query(sql, [name]);
+    const [rows] = await db.query(sql, [name]);
     return rows[0] || null;
   },
   async findByCode(code) {
@@ -21,10 +21,12 @@ const MasterWarehouseModel = {
     const [rows] = await db.query(sql, [code]);
     return rows[0] || null;
   },
-  async create(code, name, address, contact) {
+  async create({ code, name, address, contact }) {
     const sql = "INSERT INTO Gudang_Induk VALUES (?,?,?,?)";
+    const [result] = await db.query(sql, [code, name, address, contact]);
+    return result.insertId;
   },
-  async update(code, name, address, contact) {
+  async update({ code, name, address, contact }) {
     const sql =
       "UPDATE Gudang_Induk set kode = ?, nama = ?, alamat = ?, kontak = ?";
     await db.query(sql, [code, name, address, contact]);

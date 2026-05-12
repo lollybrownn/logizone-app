@@ -4,7 +4,7 @@ const MasterWarehouseController = {
   async showAll(req, res) {
     try {
       const warehouseList = await MasterWarehouseModel.findAll();
-      return res.status(200).json({ sucess: true, data: { warehouseList } });
+      return res.status(200).json({ success: true, data: { warehouseList } });
     } catch (error) {
       return res.status(500).json({ success: false, message: error.message });
     }
@@ -15,7 +15,7 @@ const MasterWarehouseController = {
       if (!warehosuse) {
         return res
           .status(404)
-          .json({ sucess: false, message: "Data not found" });
+          .json({ success: false, message: "Data not found" });
       }
       return res.status(200).json({ success: true, data: { warehouse } });
     } catch (error) {
@@ -28,7 +28,7 @@ const MasterWarehouseController = {
       if (!warehosuse) {
         return res
           .status(404)
-          .json({ sucess: false, message: "Data not found" });
+          .json({ success: false, message: "Data not found" });
       }
       return res.status(200).json({ success: true, data: { warehouse } });
     } catch (error) {
@@ -41,18 +41,66 @@ const MasterWarehouseController = {
       if (!code || !name || !address || !contact) {
         return res
           .status(500)
-          .json({ sucess: false, message: "All columns must be filled" });
+          .json({ success: false, message: "All columns must be filled" });
       }
       const isTaken = await MasterWarehouseModel.findByCode(code);
       if (isTaken) {
         return res
-          .status(401)
-          .json({ sucess: false, message: "Code is already taken" });
+          .status(409)
+          .json({ success: false, message: "Code is already taken" });
       }
-      await MasterWarehouseModel.create(code, name, address, contact);
+      await MasterWarehouseModel.create({ code, name, address, contact });
       return res
         .status(200)
-        .json({ sucess: true, message: "Sucessfully added warehouse" });
+        .json({ success: true, message: "Sucessfully added warehouse" });
+    } catch (error) {
+      return res.status(500).json({ success: false, message: error.message });
+    }
+  },
+
+  async deleteWarehouse(req, res) {
+    try {
+      const deleted = await MasterWarehouseModel.delete(req.params.id);
+      if (!deleted) {
+        return res
+          .status(404)
+          .json({ success: false, message: "Master Warehouse not found" });
+      }
+      return res
+        .status(200)
+        .json({ success: true, message: "Master Warehouse deleted" });
+    } catch (error) {
+      return res.status(500).json({ success: false, message: error.message });
+    }
+  },
+
+  async updateWarehouse(req, res) {
+    try {
+      const { id } = req.params;
+      const { code, name, contact, address } = req.body;
+      if (!code || !name || !contact || !address) {
+        return res
+          .status(500)
+          .json({ success: false, message: "All columns must be filled" });
+      }
+      const updated = await MasterWarehouseModel.update(id, {
+        code,
+        name,
+        address,
+        contact,
+      });
+      if (!updated) {
+        return res
+          .status(404)
+          .json({ success: false, message: "Warehouse not found" });
+      }
+
+      return res
+        .status(200)
+        .json({ success: true, message: "Warehouse updated" });
+      return res
+        .status(200)
+        .json({ success: true, message: "Warehouse updated" });
     } catch (error) {
       return res.status(500).json({ success: false, message: error.message });
     }

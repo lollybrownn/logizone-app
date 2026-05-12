@@ -4,9 +4,9 @@ const UserController = {
   async showAll(req, res) {
     try {
       const users = await UserModel.findAll();
-      return res.status(200).json({ sucess: true, data: { users } });
+      return res.status(200).json({ success: true, data: { users } });
     } catch (error) {
-      return res.status(500).json({ sucess: false, message: error.message });
+      return res.status(500).json({ success: false, message: error.message });
     }
   },
   async showById(req, res) {
@@ -15,11 +15,11 @@ const UserController = {
       if (!user) {
         return res
           .status(404)
-          .json({ sucess: false, message: "User not found" });
+          .json({ success: false, message: "User not found" });
       }
-      return res.status(500).json({ sucess: true, data: { user } });
+      return res.status(200).json({ success: true, data: { user } });
     } catch (error) {
-      return res.status(500).json({ sucess: false, message: error.message });
+      return res.status(500).json({ success: false, message: error.message });
     }
   },
   async showByUsername(req, res) {
@@ -28,11 +28,11 @@ const UserController = {
       if (!user) {
         return res
           .status(404)
-          .json({ sucess: false, message: "User not found" });
+          .json({ success: false, message: "User not found" });
       }
-      return res.status(500).json({ sucess: true, data: { user } });
+      return res.status(500).json({ success: true, data: { user } });
     } catch (error) {
-      return res.status(500).json({ sucess: false, message: error.message });
+      return res.status(500).json({ success: false, message: error.message });
     }
   },
   async showByRole(req, res) {
@@ -41,11 +41,11 @@ const UserController = {
       if (!users) {
         return res
           .status(404)
-          .json({ sucess: false, message: "User not found" });
+          .json({ success: false, message: "User not found" });
       }
-      return res.status(500).json({ sucess: true, data: { users } });
+      return res.status(500).json({ success: true, data: { users } });
     } catch (error) {
-      return res.status(500).json({ sucess: false, message: error.message });
+      return res.status(500).json({ success: false, message: error.message });
     }
   },
   async createUser(req, res) {
@@ -53,7 +53,7 @@ const UserController = {
       const { username, password, role } = req.body;
       if (!username || !password || !role) {
         return res.status(422).json({
-          sucess: false,
+          success: false,
           message: "Username, password and role are required ",
         });
       }
@@ -61,23 +61,23 @@ const UserController = {
       if (isTaken) {
         return res
           .status(409)
-          .json({ sucess: false, message: "Username already used" });
+          .json({ success: false, message: "Username already used" });
       }
-      await UserModel.create(username, password, role);
+      await UserModel.create({ username, password, role });
       return res
-        .json(200)
-        .json({ sucess: true, message: "Register successfully" });
+        .status(200)
+        .json({ success: true, message: "Register successfully" });
     } catch (error) {
-      return res.status(500).json({ sucess: false, message: error.message });
+      return res.status(500).json({ success: false, message: error.message });
     }
   },
   async updateUser(req, res) {
     try {
-      const { username, role } = req.body;
+      const { id, username, role } = req.body;
       if (!username || !role) {
         return res
           .status(422)
-          .json({ sucess: false, message: "Username and role are required" });
+          .json({ success: false, message: "Username and role are required" });
       }
 
       const user = await UserModel.findByUsername(username);
@@ -86,10 +86,10 @@ const UserController = {
           .status(404)
           .json({ success: false, message: "User not found" });
       }
-      const updateUser = await UserModel.update(username, role);
-      return res.status(200).json({ sucess: true, message: "User Updated" });
+      const updateUser = await UserModel.update(id, { username, role });
+      return res.status(200).json({ success: true, message: "User Updated" });
     } catch (error) {
-      return res.status(500).json({ sucess: false, message: error.message });
+      return res.status(500).json({ success: false, message: error.message });
     }
   },
 
@@ -99,11 +99,11 @@ const UserController = {
       if (!deleted) {
         return res
           .status(404)
-          .json({ sucess: false, message: "User not found" });
+          .json({ success: false, message: "User not found" });
       }
-      return res.status(200).json({ sucess: false, message: "User deleted" });
+      return res.status(200).json({ success: true, message: "User deleted" });
     } catch (error) {
-      return res.status(500).json({ sucess: false, message: error.message });
+      return res.status(500).json({ success: false, message: error.message });
     }
   },
 };
