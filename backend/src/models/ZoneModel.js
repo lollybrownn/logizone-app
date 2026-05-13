@@ -27,6 +27,12 @@ const ZoneModel = {
     return result.affectedRows > 0;
   },
 
+  async updateCapacity(id, new_capacity, connection = db) {
+    const sql = "UPDATE zones SET kapasitas = ? WHERE id = ?";
+    const [result] = await connection.query(sql, [id, new_capacity]);
+    return result.affectedRows > 0;
+  },
+
   async delete(id) {
     const sql = "DELETE FROM zones WHERE id = ?";
     const [result] = await db.query(sql, [id]);
