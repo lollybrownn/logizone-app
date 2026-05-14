@@ -219,7 +219,7 @@ const BarangController = {
           .status(404)
           .json({ success: false, message: "Zone is not found" });
       }
-      const results = await ItemModel.getitemFromZone(search_zone.nama_zona);
+      const results = await ItemModel.findItemsByZone(search_zone.nama_zona);
       if (results.length === 0) {
         return res
           .status(404)

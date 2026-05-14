@@ -1,22 +1,19 @@
 // src/config/database.js
 // Like Laravel's config/database.php — manages DB connection
-const mysql = require("mysql2/promise");
+const { Pool } = require("pg");
 require("dotenv").config();
 
-const pool = mysql.createPool({
+const pool = new Pool({
   host: process.env.DB_HOST || "localhost",
-  port: process.env.DB_PORT || 3306,
+  port: process.env.DB_PORT || 5432,
   user: process.env.DB_USER || "root",
   password: process.env.DB_PASSWORD || "",
   database: process.env.DB_NAME || "myapp_db",
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0,
 });
 
 // Test connection on startup
 pool
-  .getConnection()
+  .connect()
   .then((conn) => {
     console.log("✅ Database connected successfully");
     conn.release();

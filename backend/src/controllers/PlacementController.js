@@ -81,7 +81,12 @@ const PlacementController = {
       await ItemModel.assignZone(item.id, new_zone.id, connection);
 
       await connection.commit();
+      return res.status(200).json({
+        success: true,
+        message: "Item zone updated successfully",
+      });
     } catch (error) {
+      await connection.rollback();
       return res.status(500).json({ success: false, message: error.message });
     } finally {
       connection.release();
