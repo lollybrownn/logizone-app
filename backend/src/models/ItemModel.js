@@ -161,7 +161,7 @@ const ItemModel = {
     return result.rows;
   },
 
-  async findById(id_barang) {
+  async findById(id_barang, connection = db) {
     const sql = `
       SELECT
         b.*,
@@ -173,7 +173,7 @@ const ItemModel = {
       WHERE b.id_barang = $1
     `;
 
-    const result = await db.query(sql, [id_barang]);
+    const result = await connection.query(sql, [id_barang]);
 
     return result.rows[0] || null;
   },
@@ -255,7 +255,7 @@ const ItemModel = {
   // UPDATE
   // -------------------------------------------------------------------------
 
-  async update(id_barang, fields) {
+  async update(id_barang, fields, connection = db) {
     const allowed = [
       "no_resi",
       "label_barang",
@@ -302,8 +302,14 @@ const ItemModel = {
       RETURNING *
     `;
 
-    const result = await db.query(sql, params);
+    const result = await connection.query(sql, params);
 
+    return result.rows[0] || null;
+  },
+
+  async updateStatus(id_barang, new_status, connection = db) {
+    const sql = "UPDATE barang SET status = $1 WHERE id = $2";
+    const result = connection.query(sql, [new_status, id_barang]);
     return result.rows[0] || null;
   },
 
