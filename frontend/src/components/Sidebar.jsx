@@ -8,6 +8,7 @@ import { CiDeliveryTruck } from "react-icons/ci";
 import { HiOutlineDocumentReport } from "react-icons/hi";
 import { GoStack } from "react-icons/go";
 import { GoPeople } from "react-icons/go";
+import { IoLogOutOutline } from "react-icons/io5";
 
 
 const SidebarHeader = () => {
@@ -24,10 +25,40 @@ const SidebarHeader = () => {
   )
 }
 
-const SidebarFooter = () => {
+const FooterLogOut = ({ icon: Icon }) => {
   return (
-    <div>
+    <div className="ms-auto flex items-center cursor-pointer hover:opacity-80">
+      <Icon className="text-white text-xl"/>
+    </div>
+  )
+}
 
+const ProfileName = ({ email, role }) => {
+  return (
+    <div className="flex flex-col">
+      <span className="text-white text-sm font-semibold leading-tight">
+        {email}
+      </span>
+      
+      <span className="text-gray-400 text-xs">
+        {role}
+      </span>
+    </div>
+  )
+}
+
+const FooterProfile = ({ label }) => {
+  return (
+    <div className="flex-none w-10 h-10 flex items-center justify-center rounded-full bg-gradient-to-br from-[#0081FA] to-[#0047AB] shadow-[0_0_15px_rgba(0,129,250,0.6)] text-white text-xs font-bold">
+      {label}
+    </div>
+  )
+}
+
+const SidebarFooter = ({ children }) => {
+  return (
+    <div className="flex flex-row p-4 gap-4">
+      {children}
     </div>
   )
 }
@@ -61,7 +92,9 @@ export const Sidebar = () => {
   return (
     <div className="w-64 flex flex-col bg-[#0F172A] text-white h-screen gap-4 overflow-y-auto">
       <SidebarHeader />
+
       <hr className="text-[#2A345B]" />
+
       <SidebarSection title="UMUM">
         <SidebarItem
           icon={LuLayoutDashboard}
@@ -86,8 +119,14 @@ export const Sidebar = () => {
         <SidebarItem icon={LuWarehouse} label="Gudang Induk" />
         <SidebarItem icon={GoPeople} label="Manajemen Akun" />
       </SidebarSection>
+
       <hr className="text-[#2A345B]" />
 
+      <SidebarFooter>
+        <FooterProfile label="O"/>
+        <ProfileName email="halo" role="Owner"/>
+        <FooterLogOut icon={ IoLogOutOutline }/>
+      </SidebarFooter>
     </div>
   )
 }
