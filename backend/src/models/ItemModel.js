@@ -76,7 +76,7 @@ const ItemModel = {
 
   async findAgingItems() {
     const sql = `
-      SELECT *
+      SELECT *,sum(id) as total_barang_aging
       FROM barang
       WHERE NOW() >= tanggal_keluar - INTERVAL '3 days'
       AND NOW() < tanggal_keluar
@@ -89,7 +89,7 @@ const ItemModel = {
 
   async findOverdueItems() {
     const sql = `
-      SELECT *
+      SELECT *,sum(id) as total_barang_overdue
       FROM barang
       WHERE tanggal_keluar < NOW()
     `;

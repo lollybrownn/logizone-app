@@ -3,7 +3,7 @@ const ItemModel = require("../models/ItemModel");
 const InventoryController = {
   async getAgingItems(req, res) {
     try {
-      const agingItems = ItemModel.getAgingItems();
+      const agingItems = ItemModel.findAgingItems();
       if (agingItems.length === 0) {
         return res.status(200).json({ success: true, message: "No data" });
       }
@@ -14,7 +14,7 @@ const InventoryController = {
   },
   async getOverdueItems(req, res) {
     try {
-      const overdueItems = ItemModel.fingAgingItems();
+      const overdueItems = ItemModel.findOverdueItems();
       if (overdueItems.length === 0) {
         return res.status(200).json({ success: true, message: "No data" });
       }
