@@ -27,7 +27,7 @@ const HistoryItemModel = {
     const sql =
       "SELECT sum(total_biaya) FROM history_barang WHERE tanggal_keluar BETWEEN $1 AND $2";
     const result = await db.query(sql, [start_date, end_date]);
-    return result.rows[0] || null;
+    return result.rows[0] || 0;
   },
 
   async findRecapItems(start_date, end_date) {
@@ -41,6 +41,13 @@ const HistoryItemModel = {
       "SELECT hb.biaya_ekstra,hb.tanggal_keluar,hb.berat_barang,hb.tipe_keluar,b.label_barang,b.jumlah_koli FROM history_barang hb JOIN barang b ON hb.id_barang =  b.id_barang WHERE b.status = $1";
     const results = await db.query(sql, ["Picked Up"]);
     return results.rows;
+  },
+
+  async findTotalProcessedItems(start_date, end_date) {
+    const sql =
+      "SELECT COUNT(id) FROM history_barang WHERE tanggal_keluar BETWEEN $1 AND $2";
+    const result = await db.query(sql, [start_date, end_date]);
+    return result.rows[0] || 0;
   },
 };
 
