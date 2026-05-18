@@ -8,7 +8,7 @@ const UserModel = {
     return results.rows;
   },
   async findByUsername(username) {
-    const sql = "SELECT id,username,role from users where username = $1";
+    const sql = "SELECT id,username, password, role from users where username = $1";
     const result = await db.query(sql, [username]);
     return result.rows[0] || null;
   },

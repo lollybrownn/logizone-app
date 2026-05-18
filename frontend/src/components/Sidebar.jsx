@@ -96,14 +96,11 @@ export const Sidebar = () => {
   return (
     <div className="w-64 h-screen bg-[#0F172A] text-white flex flex-col flex-none border-r border-white/5">
 
-      {/* --- HEADER --- */}
       <div className="flex-none">
         <SidebarHeader />
         <hr className="border-[#2A345B] mx-4 my-4" />
       </div>
 
-      {/* --- BODY (MENU) --- */}
-      {/* flex-1 di sini yang bikin footer terdorong ke bawah */}
       <div className="flex-1 overflow-y-auto no-scrollbar space-y-6 pb-10">
         <SidebarSection title="UMUM">
           <Link to="/dashboard">
