@@ -61,10 +61,15 @@ const ZoneModel = {
     const result = await db.query(sql, [id]);
     return result.rowCount > 0;
   },
-  async updateCapacity(id, new_capacity, connection = db) {
-    const sql = "UPDATE zones SET kapasitas = $1 WHERE id = $2";
-    const result = await connection.query(sql, [new_capacity, id]);
-    return result.rowCount > 0;
+  async findDuplicate({ kode_zona, nama_zona, excludeId = null }) {
+    const params = [kode_zona, nama_zona]
+    let sql = `SELECT * FROM zones WHERE kode_zona = $1 AND nama_zona = $2`
+    if (excludeId) {
+      params.push(excludeId);
+      sql += `AND id_zone !=$3`
+    }
+    const result = await db.query(sql, params)
+    return result.rows[0] || null;
   },
 
   async delete(id) {

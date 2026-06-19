@@ -1,76 +1,63 @@
 const HistoryItemModel = require("../models/HistoryItemModel");
 const ItemModel = require("../models/ItemModel");
 
+function resolveDateRange(query) {
+  let { start_date, end_date } = query;
+  if (!start_date || !end_date) {
+    start_date = new Date()
+    end_date = new Date()
+  } else {
+    start_date = new Date(start_date)
+    end_date = new Date(end_date)
+  }
+  return { start_date, end_date }
+}
 const ReportController = {
-  
+
   async getSummaryReport(req, res) {
     try {
-      let{
-        start_date,end_date
-      }= req.body;
-
-      if(!start_date || !end_date){
-        start_date = new Date()
-        end_date = new Date()
-
-        start_date.setData(end_date.getData() - 30);
-      }
-      const totalIncome = await HistoryItemModel.findTotalIncome(start_datem,end_date);
-      const totalProcessedItems = await HistoryItemModel.findTotalProcessedItems(start_date,end_date);
-      return res.status(200).json({success:true, data:{totalIncome,totalProcessedItems}});
-      const  
+      const {
+        start_date, end_date
+      } = resolveDateRange(req.query);
+      const [totalIncome, totalProcessedItems] = await Promise.all([HistoryItemModel.findTotalIncome(start_datem, end_date),
+      HistoryItemModel.findTotalProcessedItems(start_date, end_date)]);
+      return res.status(200).json({ success: true, data: { totalIncome, totalProcessedItems, start_date, end_date } });
+      const
     } catch (error) {
       return res.status(500).json({ success: false, message: error.message });
     }
   },
   async getFinancialReport(req, res) {
     try {
-      let { start_date, end_date } = req.body;
-      if (!start_date || !end_date) {
-        end_date = new Date();
-        start_date = new Date();
+      const {
+        start_date, end_date
+      } = resolveDateRange(req.query);
 
-        start_date.setData(end_date.getData() - 30);
-      }
-      const totalIncome = await HistoryItemModel.findTotalIncome(start_date,end_date);
-      const totalProcessedItems = await HistoryItemModel.findTotalProcessedItems(start_date,end_date)
-      const financialSummary = await HistoryItemModel.findRecapItems(
-        start_date,
-        end_date,
-      );
+      const [totalIncome, totalProcessedItems, financialSummary] = await Promise.all([HistoryItemModel.findTotalIncome(start_date, end_date), HistoryItemModel.findTotalProcessedItems(start_date, end_date), HistoryItemModel.findRecapItems(start_date, end_date)])
       if (financialSummary.length === 0) {
         return res
           .status(404)
-          .json({ success: true, message: "There is no data in that date" });
+          .json({ success: true, message: "There is no data in that date range" });
       }
-      return res.status(200).json({ success: true, data: {financialSummary,totalIncome,totalProcessedItems}});
+      return res.status(200).json({ success: true, data: { financialSummary, totalIncome, totalProcessedItems } });
     } catch (error) {
       return res.status(500).json({ success: false, message: error.message });
     }
   },
+  async getLogisticReport(req, res) {
+    const { start_date, end_date } = resolveDateRange(req.query);
 
-  // async getLogisticReports(req, res) {
-  //   try {
-  //     let { start_date, end_date } = req.body;
-  //     if (!start_date || !end_date) {
-  //       start_date = new Date();
-  //       end_date = new Date();
-
-  //       start_date.setData(end_date.getData() - 30);
-  //     }
-
-  //     const sumProccessedItems = await HistoryItemModel.findTotalProcessedItems(
-  //       start_date,
-  //       end_date,
-  //     );
-      
-  //     const totalIncome = await HistoryItemModel.findTotalIncome(start_date,end_date);
-
-  //     return res.status(200).json({ success: true, data: sumProccessedItems });
-  //   } catch (error) {
-  //     return res.status(500).json({ success: false, message: error.message });
-  //   }
-  // },
+    const [totalProcessedItems, totalIncome, activityLog] = await Promise.all([HistoryItemModel.findTotalProcessedItems(start_date, end_date),
+    HistoryItemModel.findTotalIncome(start_date, end_date),
+    HistoryItemModel.getLogisticReport(start_date, end_date)
+    ]);
+    if (activityLog.length === 0) {
+      return res
+        .status(404)
+        .json({ success: true, message: "There is no data in that date range", data: { activityLog: 0, totalProcessedItems, totalIncome } });
+    }
+    return res.status(200).json({ success: true, data: { activityLog, totalIncome, totalProcessedItems } });
+  }
 
 };
 module.exports = ReportController;
