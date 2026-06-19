@@ -12,7 +12,7 @@ const MasterWarehouseController = {
   async showByCode(req, res) {
     try {
       const warehouse = await MasterWarehouseModel.findByCode(req.params.id);
-      if (!warehosuse) {
+      if (!warehouse) {
         return res
           .status(404)
           .json({ success: false, message: "Data not found" });
@@ -25,7 +25,7 @@ const MasterWarehouseController = {
   async showByName(req, res) {
     try {
       const warehouse = await MasterWarehouseModel.findByName(req.params.name);
-      if (!warehosuse) {
+      if (!warehouse) {
         return res
           .status(404)
           .json({ success: false, message: "Data not found" });

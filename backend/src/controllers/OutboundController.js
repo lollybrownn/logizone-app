@@ -5,31 +5,35 @@ const HistoryItemModel = require("../models/HistoryItemModel");
 const OutboundController = {
   async getReadyToLeave(req, res) {
     try {
-      const items = await ItemModel.findAll({status="Stored"});
-      if(!items){
-        return res.status(200).json({success:true, message:"No data"});
+      const items = await ItemModel.findAll({ status: "Stored" });
+      if (!items) {
+        return res.status(200).json({ success: true, message: "No data" });
       }
-      return res.status(200).json({success:true, data:{items}});
+      return res.status(200).json({ success: true, data: { items } });
     } catch (error) {
       return res.status(500).json({ success: false, message: error.message });
     }
   },
 
-  async getHistoryOutbound(req,res){
+  async getHistoryOutbound(req, res) {
     try {
       const items = HistoryItemModel.findHistoryOutbound();
-      return res.status(200).json({success:true, data: {items}});
+      return res.status(200).json({ success: true, data: { items } });
     } catch (error) {
-      return res.status(500).json({success:false, message: error.message});
+      return res.status(500).json({ success: false, message: error.message });
     }
-
   },
   async validateOutbound(req, res) {
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
       const { id_barang } = req.params;
-      const { tipe_keluar,berat_barang = 0, biaya_ekstra = 0, id_user } = req.body;
+      const {
+        tipe_keluar,
+        berat_barang = 0,
+        biaya_ekstra = 0,
+        id_user,
+      } = req.body;
 
       const item = await ItemModel.findById(id_barang, client);
       if (!item) {
@@ -45,7 +49,7 @@ const OutboundController = {
 
       await HistoryItemModel.create(
         {
-          tipe_keluar:tipe_keluar,
+          tipe_keluar: tipe_keluar,
           berat_barang: berat_barang,
           biaya_ekstra: biaya_ekstra,
           total_biaya: total_biaya,

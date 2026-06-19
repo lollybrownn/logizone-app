@@ -19,8 +19,8 @@ const ItemModel = {
         z.nama_zona,
         g.nama_gudang
       FROM barang b
-      LEFT JOIN zona z ON b.id_zona = z.id_zona
-      LEFT JOIN gudang_induk g ON b.id_gudang_induk = g.id_gudang_induk
+      LEFT JOIN zones z ON b.id_zona = z.id
+      LEFT JOIN gudang_induk g ON b.id_gudang_induk = g.id
       WHERE 1=1
     `;
 
@@ -75,12 +75,8 @@ const ItemModel = {
   },
 
   async findAgingItems() {
-    const sql = `
-      SELECT *,sum(id) as total_barang_aging
-      FROM barang
-      WHERE NOW() >= tanggal_keluar - INTERVAL '3 days'
-      AND NOW() < tanggal_keluar
-    `;
+    const sql =
+      "SELECT b.barang, z.nama_zona FROM barang b LEFT JOIN zones z on b.id_zona = z.id WHERE b.status NOT IN ('Completed') AND NOW() >= (b.estimasi_tgl_keluar - INTERVAL '3 days') AND NOW() < b.estimasi_tgl_keluar ORDER BY b.estimasi_tgl_keluar ASC";
 
     const result = await db.query(sql);
 
@@ -88,11 +84,10 @@ const ItemModel = {
   },
 
   async findOverdueItems() {
-    const sql = `
-      SELECT *,sum(id) as total_barang_overdue
-      FROM barang
-      WHERE tanggal_keluar < NOW()
-    `;
+    const sql = `SELECT b.*, z.nama_zona FROM barang b 
+    LEFT JOIN zona z ON b.id_zona = z.id
+    WHERE b.status NOT IN ('Completed') AND b.estimasi_tgl_keluar < NOW()
+    ORDER BY b.estimasi_tgl_keluar ASC`;
 
     const result = await db.query(sql);
 
@@ -146,18 +141,20 @@ const ItemModel = {
 
   async findItemsByZone(id_zone) {
     const sql = `
-      SELECT
-        b.no_resi,
-        b.label_barang,
-        b.jumlah_koli
-      FROM barang b
-      JOIN zona z
-        ON b.id_zona = z.id_zona
-      WHERE z.id_zona = $1
+    SELECT id,no_Resi,label_barang,jumlah_koli,status 
+    FROM barang WHERE id_zona = $1 
+    ORDER BY tgl_masuk ASC
     `;
 
     const result = await db.query(sql, [id_zone]);
 
+    return result.rows;
+  },
+  async findUnplacedItems() {
+    const sql = `SELECT b.*,g.nama_gedung_induk FROM barang b
+    LEFT JOIN gudang_induk g ON b.id_gudang_induk = g.id
+    WHERE b.id_zona IS NULL AND b.status IN ('Registered','Pending') ORDER BY b.tgl_masuk ASC`;
+    const result = await db.query(sql);
     return result.rows;
   },
 
@@ -168,7 +165,7 @@ const ItemModel = {
         z.nama_zona,
         g.nama_gudang
       FROM barang b
-      LEFT JOIN zona z ON b.id_zona = z.id_zona
+      LEFT JOIN zones z ON b.id_zona = z.id_zona
       LEFT JOIN gudang_induk g ON b.id_gudang_induk = g.id_gudang_induk
       WHERE b.id_barang = $1
     `;

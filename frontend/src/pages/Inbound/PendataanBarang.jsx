@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Sidebar } from "../../components/Sidebar";
 import { Plus, PackageSearch } from "lucide-react";
-import { ModalTambahBarang  } from "../../components/ModalTambahBarang";
+import { ModalTambahBarang } from "../../components/ModalTambahBarang";
 
 export const PendataanBarang = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -30,7 +30,7 @@ export const PendataanBarang = () => {
                             Catat barang yang masuk setelah resi diterima
                         </p>
                     </div>
-                    <button 
+                    <button
                         onClick={() => setIsModalOpen(true)}
                         className="bg-[#1D5ABF] hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 shadow-sm transition-all active:scale-95"
                     >

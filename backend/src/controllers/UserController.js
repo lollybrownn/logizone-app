@@ -37,7 +37,7 @@ const UserController = {
   },
   async showByRole(req, res) {
     try {
-      const users = await UserModel.findByUsername(req.params.role);
+      const users = await UserModel.findByRole(req.params.role);
       if (!users) {
         return res
           .status(404)
@@ -57,6 +57,12 @@ const UserController = {
           message: "Username, password and role are required ",
         });
       }
+      if (!UserModel.VALID_ROLES.includes(role)) {
+        return res.status(422).json({
+          success: false,
+          message: "Role tidak valid",
+        });
+      }
       const isTaken = await UserModel.findByUsername(username);
       if (isTaken) {
         return res
@@ -64,30 +70,47 @@ const UserController = {
           .json({ success: false, message: "Username already used" });
       }
       await UserModel.create({ username, password, role });
-      return res
-        .status(200)
-        .json({ success: true, message: "Register successfully" });
+      return res.status(200).json({
+        success: true,
+        message: "Register successfully",
+        data: { user },
+      });
     } catch (error) {
       return res.status(500).json({ success: false, message: error.message });
     }
   },
   async updateUser(req, res) {
     try {
-      const { id, username, role } = req.body;
-      if (!username || !role) {
-        return res
-          .status(422)
-          .json({ success: false, message: "Username and role are required" });
+      const { id } = req.params;
+      const { username, role } = req.body;
+      const existUser = await UserModel.findById(id);
+      if (!existUser) {
+        return res.status(422).json({
+          success: false,
+          message: "User not found",
+        });
       }
 
-      const user = await UserModel.findByUsername(username);
-      if (!user) {
-        return res
-          .status(404)
-          .json({ success: false, message: "User not found" });
+      if (role && !UserModel.VALID_ROLES.includes(role)) {
+        return res.status(422).json({
+          success: false,
+          message: "Role is not valid",
+        });
+      }
+      if (username && username !== existing.username) {
+        const taken = await UserModel.findByUsername(username);
+        if (!taken) {
+          return res
+            .status(404)
+            .json({ success: false, message: "Username already used" });
+        }
       }
       const updateUser = await UserModel.update(id, { username, role });
-      return res.status(200).json({ success: true, message: "User Updated" });
+      return res.status(200).json({
+        success: true,
+        message: "User Updated",
+        data: { user: updateUser },
+      });
     } catch (error) {
       return res.status(500).json({ success: false, message: error.message });
     }
