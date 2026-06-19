@@ -3,7 +3,7 @@ const ZoneModel = require("../models/ZoneModel");
 
 const VALID_STATUSES = ["Pending", "Stored", "Outbound"];
 
-const BarangController = {
+const ItemController = {
   // -------------------------------------------------------------------------
   // GET /api/barang
   // Query params: search, label_barang, no_resi, status, page, per_page
@@ -63,6 +63,14 @@ const BarangController = {
           .status(404)
           .json({ success: false, message: "Good is not found" });
       }
+      return res.status(200).json({ success: true, data: { barang } });
+    } catch (error) {
+      return res.status(500).json({ success: false, message: error.message });
+    }
+  },
+  async showUnplaced(req, res) {
+    try {
+      const barang = await ItemModel.findUnplacedItems();
       return res.status(200).json({ success: true, data: { barang } });
     } catch (error) {
       return res.status(500).json({ success: false, message: error.message });
