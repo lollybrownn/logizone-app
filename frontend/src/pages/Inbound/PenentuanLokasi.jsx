@@ -18,14 +18,21 @@ export const PenentuanLokasi = () => {
     const dataBarang = [];
 
     return (
-        <div className="flex flex-row min-h-screen bg-white">
-            <Sidebar className="flex-none" />
+        <div className="flex flex-row h-screen w-full overflow-hidden bg-[#F8F9FA]">
+            <Sidebar/>
 
-            <div className="flex-1 p-10 bg-white">
-                {/* Header */}
+            <div className="flex-1 h-screen overflow-y-auto p-10">
+                {/* Header & Breadcrumb */}
                 <header className="mb-8">
+                    <nav className="text-[11px] text-gray-400 mb-2 flex gap-1 items-center font-medium">
+                        <span>Inbound</span>
+                        <span>&gt;</span>
+                        <span className="text-gray-400">Penentuan Lokasi Penyimpanan</span>
+                    </nav>
                     <h1 className="text-2xl font-bold text-gray-900 mb-1">Penentuan Lokasi Penyimpanan</h1>
-                    <p className="text-sm text-blue-500 font-medium">Tetapkan zona untuk barang di gudang</p>
+                    <p className="text-sm text-slate-500">
+                        Tetapkan zona untuk barang di gudang.
+                    </p>
                 </header>
 
                 {/* Zona Cards Grid */}

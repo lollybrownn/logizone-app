@@ -18,18 +18,24 @@ export const PendataanBarang = () => {
     };
 
     return (
-        <div className="flex flex-row min-h-screen bg-white">
-            <Sidebar className="flex-none" />
+        <div className="flex flex-row h-screen w-full overflow-hidden bg-[#F8F9FA]">
+            <Sidebar />
 
-            <div className="flex-1 p-10">
+            <div className="flex-1 h-screen overflow-y-auto p-10">
                 {/* Header Section */}
                 <div className="flex justify-between items-start mb-10">
-                    <div>
+                    {/* Header & Breadcrumb */}
+                    <header className="mb-8">
+                        <nav className="text-[11px] text-gray-400 mb-2 flex gap-1 items-center font-medium">
+                            <span>Inbound</span>
+                            <span>&gt;</span>
+                            <span className="text-gray-400">Pendataan Barang</span>
+                        </nav>
                         <h1 className="text-2xl font-bold text-gray-900 mb-1">Pendataan Barang</h1>
-                        <p className="text-sm text-slate-400">
-                            Catat barang yang masuk setelah resi diterima
+                        <p className="text-sm text-slate-500">
+                            Catat barang yang masuk setelah resi diterima.
                         </p>
-                    </div>
+                    </header>
                     <button
                         onClick={() => setIsModalOpen(true)}
                         className="bg-[#1D5ABF] hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 shadow-sm transition-all active:scale-95"

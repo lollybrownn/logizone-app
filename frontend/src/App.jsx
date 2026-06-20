@@ -5,7 +5,6 @@ import { PenentuanLokasi } from "./pages/Inbound/PenentuanLokasi.jsx";
 import { PencarianBarang } from "./pages/OPERASIONAL/PencarianBarang.jsx";
 import { MonitoringAging } from "./pages/OPERASIONAL/MonitoringAging.jsx";
 import { ValidasiOutbound } from "./pages/OUTBOUND/ValidasiOutbound.jsx";
-import { Login } from "./pages/Login.jsx";
 
 // Komponen untuk memproteksi halaman
 // const ProtectedRoute = ({ children }) => {
