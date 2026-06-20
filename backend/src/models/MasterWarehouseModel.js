@@ -29,9 +29,9 @@ const MasterWarehouseModel = {
   },
   async update(id, { code, name, address, contact }) {
     const sql =
-      "UPDATE gudang_induk set kode = $1, nama = $2, alamat = $3, kontak = $4 WHERE id = $5";
+      "UPDATE gudang_induk SET kode = $1, nama = $2, alamat = $3, kontak = $4 WHERE id = $5 RETURNING *";
     const result = await db.query(sql, [code, name, address, contact, id]);
-    return result.rowCount > 0;
+    return result.rows[0] || null;
   },
   async hasLinkedBarang(id) {
     const sql = "SELECT 1 FROM barang where id_gudang_induk = $1 LIMIT 1 ";

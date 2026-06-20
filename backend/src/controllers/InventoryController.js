@@ -27,8 +27,8 @@ const InventoryController = {
   async getMonitoringSummary(req, res) {
     try {
       const [agingItems, overdueItems] = await Promise.all([
-        ItemModel.findAgingItems,
-        ItemModel.findOverdueItems,
+        ItemModel.findAgingItems(),
+        ItemModel.findOverdueItems(),
       ]);
       return res.status(200).json({
         success: true,

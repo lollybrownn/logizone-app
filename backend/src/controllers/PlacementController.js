@@ -1,95 +1,136 @@
+const db = require("../config/database");
 const ItemModel = require("../models/ItemModel");
 const ZoneModel = require("../models/ZoneModel");
+
 const PlacementController = {
-  // Penempatan barang ke zona
+  // -----------------------------------------------------------------------
+  // POST /api/placement/:id/assign
+  // Body: { id_zona }
+  // FR-01 step 2 (Penentuan Lokasi) + FR-03 (Auto Stock Management)
+  // -----------------------------------------------------------------------
   async assignItemToZone(req, res) {
-    const connection = await db.getConnection();
+    const client = await db.connect();
     try {
-      await connection.beginTransaction();
-      const zone = await ZoneModel.findById(req.body.id_zone);
+      await client.query("BEGIN");
+
+      const { id_zona } = req.body;
+      if (!id_zona) {
+        await client.query("ROLLBACK");
+        return res.status(422).json({ success: false, message: "Zona wajib dipilih" });
+      }
+
+      const zone = await ZoneModel.findById(id_zona, client);
       if (!zone) {
-        return res
-          .status(404)
-          .json({ success: false, message: "Zone is not found in database" });
+        await client.query("ROLLBACK");
+        return res.status(404).json({ success: false, message: "Zona tidak ditemukan" });
       }
-      const item = await ItemModel.findById(req.params.id);
+
+      const item = await ItemModel.findById(req.params.id, client);
       if (!item) {
-        return res
-          .status(404)
-          .json({ success: false, message: "Item not found" });
+        await client.query("ROLLBACK");
+        return res.status(404).json({ success: false, message: "Barang tidak ditemukan" });
       }
-      const remaining_capacity = zone.kapasitas - item.jumlah_koli;
-      if (remaining_capacity < 0) {
+
+      if (item.id_zona) {
+        await client.query("ROLLBACK");
         return res.status(409).json({
           success: false,
-          message: "Item can't be placed in that place due to the capacity",
+          message: "Barang sudah ditempatkan, gunakan endpoint update lokasi",
         });
       }
-      await ZoneModel.updateCapacity(zone.id, remaining_capacity, connection);
-      await ItemModel.assignZone(item.id, zone.id, connection);
-      await connection.commit();
+
+      const remaining = zone.kapasitas - zone.kapasitas_terisi;
+      if (item.jumlah_koli > remaining) {
+        await client.query("ROLLBACK");
+        return res.status(409).json({
+          success: false,
+          message: "Zona tersebut sudah penuh untuk menampung jumlah koli ini",
+        });
+      }
+
+      await ZoneModel.adjustCapacity(zone.id, item.jumlah_koli, client);
+      const updatedItem = await ItemModel.assignZone(item.id_barang, zone.id, client);
+
+      await client.query("COMMIT");
 
       return res.status(200).json({
         success: true,
-        message: "Successfully placed item into that zone",
+        message: "Barang berhasil ditempatkan ke zona",
+        data: { barang: updatedItem },
       });
     } catch (error) {
-      await connection.rollback();
+      await client.query("ROLLBACK");
       return res.status(500).json({ success: false, message: error.message });
     } finally {
-      connection.release();
+      client.release();
     }
   },
 
-  // Untuk update lokasi barang ke zona lain
+  // -----------------------------------------------------------------------
+  // PUT /api/placement/:id/move
+  // Body: { id_zona }  (move an already-placed item to a different zone)
+  // -----------------------------------------------------------------------
   async updateItemZone(req, res) {
-    const connection = await db.getConnection();
+    const client = await db.connect();
     try {
-      await connection.beginTransaction();
-      const new_zone = await ZoneModel.findById(req.body.id_zone);
-      if (!new_zone) {
-        return res
-          .status(404)
-          .json({ success: false, message: "Zone is not found in database" });
+      await client.query("BEGIN");
+
+      const { id_zona } = req.body;
+      if (!id_zona) {
+        await client.query("ROLLBACK");
+        return res.status(422).json({ success: false, message: "Zona tujuan wajib dipilih" });
       }
-      const item = await ItemModel.findById(req.params.id);
+
+      const newZone = await ZoneModel.findById(id_zona, client);
+      if (!newZone) {
+        await client.query("ROLLBACK");
+        return res.status(404).json({ success: false, message: "Zona tujuan tidak ditemukan" });
+      }
+
+      const item = await ItemModel.findById(req.params.id, client);
       if (!item) {
-        return res
-          .status(404)
-          .json({ success: false, message: "Item not found" });
+        await client.query("ROLLBACK");
+        return res.status(404).json({ success: false, message: "Barang tidak ditemukan" });
       }
-      const previous_zone = await ZoneModel.findById(item.id_zona);
-      const remaining_capacity = new_zone.kapasitas - item.jumlah_koli;
-      if (remaining_capacity < 0) {
+
+      if (!item.id_zona) {
+        await client.query("ROLLBACK");
         return res.status(409).json({
           success: false,
-          message: "Item can't be placed in that place due to the capacity",
+          message: "Barang belum ditempatkan di zona manapun, gunakan endpoint assign",
         });
       }
-      const new_capacity_for_previous_zone =
-        previous_zone.kapasitas + item.jumlah_koli;
-      await ZoneModel.updateCapacity(
-        previous_zone.id,
-        new_capacity_for_previous_zone,
-        connection,
-      );
-      await ZoneModel.updateCapacity(
-        new_zone.id,
-        remaining_capacity,
-        connection,
-      );
-      await ItemModel.assignZone(item.id, new_zone.id, connection);
 
-      await connection.commit();
+      if (item.id_zona === newZone.id) {
+        await client.query("ROLLBACK");
+        return res.status(409).json({ success: false, message: "Barang sudah berada di zona tersebut" });
+      }
+
+      const remaining = newZone.kapasitas - newZone.kapasitas_terisi;
+      if (item.jumlah_koli > remaining) {
+        await client.query("ROLLBACK");
+        return res.status(409).json({ success: false, message: "Zona tujuan tidak memiliki kapasitas yang cukup" });
+      }
+
+      // Free up capacity in the old zone, consume capacity in the new zone
+      await ZoneModel.adjustCapacity(item.id_zona, -item.jumlah_koli, client);
+      await ZoneModel.adjustCapacity(newZone.id, item.jumlah_koli, client);
+      const updatedItem = await ItemModel.assignZone(item.id_barang, newZone.id, client);
+
+      await client.query("COMMIT");
+
       return res.status(200).json({
         success: true,
-        message: "Item zone updated successfully",
+        message: "Lokasi barang berhasil diperbarui",
+        data: { barang: updatedItem },
       });
     } catch (error) {
-      await connection.rollback();
+      await client.query("ROLLBACK");
       return res.status(500).json({ success: false, message: error.message });
     } finally {
-      connection.release();
+      client.release();
     }
   },
 };
+
+module.exports = PlacementController;

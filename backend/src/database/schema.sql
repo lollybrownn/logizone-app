@@ -15,7 +15,7 @@ CREATE TYPE item_status AS ENUM (
     'Completed'
 );
 
-CREATE TYPE exit_type AS ENUM ('Pickup', 'Delivery', 'Return');
+CREATE TYPE exit_type AS ENUM ('Ambil di Gudang', 'Diantar');
 
 -- -----------------------------------------------------------------------------
 -- TABLE: users

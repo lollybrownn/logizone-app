@@ -1,13 +1,15 @@
 const ItemModel = require("../models/ItemModel");
 const ZoneModel = require("../models/ZoneModel");
+const MasterWarehouseModel = require("../models/MasterWarehouseModel");
 
-const VALID_STATUSES = ["Pending", "Stored", "Outbound"];
+// Must match the item_status ENUM defined in schema.sql exactly
+const VALID_STATUSES = ["Pending", "Registered", "Stored", "Picked Up", "Completed"];
 
 const ItemController = {
-  // -------------------------------------------------------------------------
+  // ---------------------------------------------------------------------
   // GET /api/barang
-  // Query params: search, label_barang, no_resi, status, page, per_page
-  // -------------------------------------------------------------------------
+  // Query params: search, label_barang, no_resi, status, id_zona, page, per_page
+  // ---------------------------------------------------------------------
   async showAll(req, res) {
     try {
       const {
@@ -15,6 +17,7 @@ const ItemController = {
         label_barang,
         no_resi,
         status,
+        id_zona,
         page = 1,
         per_page = 15,
       } = req.query;
@@ -28,12 +31,18 @@ const ItemController = {
 
       const limit = Number(per_page);
       const offset = (Number(page) - 1) * limit;
-      const filters = { search, label_barang, no_resi, status };
+      const filters = { search, label_barang, no_resi, status, id_zona };
 
       const [barang, total] = await Promise.all([
         ItemModel.findAll({ ...filters, limit, offset }),
         ItemModel.countAll(filters),
       ]);
+
+      if (search && barang.length === 0) {
+        return res
+          .status(200)
+          .json({ success: true, message: "Barang tidak ditemukan", data: { barang: [] } });
+      }
 
       return res.status(200).json({
         success: true,
@@ -43,7 +52,7 @@ const ItemController = {
             total,
             page: Number(page),
             per_page: limit,
-            total_pages: Math.ceil(total / limit),
+            total_pages: Math.ceil(total / limit) || 1,
           },
         },
       });
@@ -52,22 +61,26 @@ const ItemController = {
     }
   },
 
-  // -------------------------------------------------------------------------
+  // ---------------------------------------------------------------------
   // GET /api/barang/:id
-  // -------------------------------------------------------------------------
+  // ---------------------------------------------------------------------
   async showById(req, res) {
     try {
       const barang = await ItemModel.findById(req.params.id);
       if (!barang) {
         return res
           .status(404)
-          .json({ success: false, message: "Good is not found" });
+          .json({ success: false, message: "Barang tidak ditemukan" });
       }
       return res.status(200).json({ success: true, data: { barang } });
     } catch (error) {
       return res.status(500).json({ success: false, message: error.message });
     }
   },
+
+  // ---------------------------------------------------------------------
+  // GET /api/barang/unplaced
+  // ---------------------------------------------------------------------
   async showUnplaced(req, res) {
     try {
       const barang = await ItemModel.findUnplacedItems();
@@ -77,9 +90,9 @@ const ItemController = {
     }
   },
 
-  // -------------------------------------------------------------------------
-  // POST /api/barang
-  // -------------------------------------------------------------------------
+  // ---------------------------------------------------------------------
+  // POST /api/barang   (FR-01: Pendataan Barang Masuk, VR-01..VR-08)
+  // ---------------------------------------------------------------------
   async createBarang(req, res) {
     try {
       const {
@@ -87,7 +100,7 @@ const ItemController = {
         label_barang,
         jumlah_koli,
         tgl_masuk,
-        tgl_ambil,
+        estimasi_tgl_keluar,
         kota_asal_barang,
         kota_tujuan_keluar,
         biaya,
@@ -96,62 +109,100 @@ const ItemController = {
         nama_pengirim,
         no_telp_pengirim,
         id_gudang_induk,
-        id_zona,
       } = req.body;
 
-      // Validasi field wajib
-      const required = {
-        no_resi,
-        label_barang,
-        jumlah_koli,
-        tgl_masuk,
-        kota_asal_barang,
-        kota_tujuan_keluar,
-        biaya,
-        nama_penerima,
-        no_telp_penerima,
-        nama_pengirim,
-        no_telp_pengirim,
-        id_gudang_induk,
-      };
-      const missing = Object.keys(required).filter(
-        (k) => !required[k] && required[k] !== 0,
-      );
-      if (missing.length > 0) {
+      // VR-02: ID Resi wajib diisi
+      if (!no_resi) {
+        return res.status(422).json({ success: false, message: "ID Resi wajib diisi" });
+      }
+
+      // VR-01: jumlah koli minimal 1
+      if (jumlah_koli === undefined || jumlah_koli === null) {
+        return res.status(422).json({ success: false, message: "Jumlah koli wajib diisi" });
+      }
+      // VR-03: hanya boleh angka bulat (integer)
+      if (!Number.isInteger(Number(jumlah_koli))) {
+        return res.status(422).json({ success: false, message: "Jumlah koli harus berupa angka bulat" });
+      }
+      if (Number(jumlah_koli) <= 0) {
+        return res.status(422).json({ success: false, message: "Jumlah koli minimal 1" });
+      }
+
+      // VR-04: estimasi tanggal keluar wajib diisi
+      if (!estimasi_tgl_keluar) {
+        return res.status(422).json({ success: false, message: "Kolom estimasi tanggal keluar wajib diisi" });
+      }
+
+      // VR-05: nomor telepon wajib diisi
+      if (!no_telp_pengirim || !no_telp_penerima) {
         return res.status(422).json({
           success: false,
-          message: `This field must be filled: ${missing.join(", ")}`,
+          message: "Nomor telepon pengirim dan penerima wajib diisi",
         });
       }
 
-      // Cek duplikat no_resi
+      // VR-06: kota asal & kota tujuan wajib diisi
+      if (!kota_asal_barang || !kota_tujuan_keluar) {
+        return res.status(422).json({
+          success: false,
+          message: "Kota asal dan kota tujuan wajib diisi",
+        });
+      }
+
+      // VR-07: biaya tidak boleh negatif
+      if (biaya !== undefined && Number(biaya) < 0) {
+        return res.status(422).json({ success: false, message: "Biaya tidak boleh bernilai negatif" });
+      }
+
+      // VR-08: estimasi tanggal keluar harus > tanggal masuk
+      const masuk = tgl_masuk ? new Date(tgl_masuk) : new Date();
+      const keluar = new Date(estimasi_tgl_keluar);
+      if (keluar <= masuk) {
+        return res.status(422).json({
+          success: false,
+          message: "Estimasi tanggal keluar harus lebih besar dari tanggal barang masuk",
+        });
+      }
+
+      if (!nama_pengirim || !nama_penerima) {
+        return res.status(422).json({
+          success: false,
+          message: "Nama pengirim dan penerima wajib diisi",
+        });
+      }
+      if (!id_gudang_induk) {
+        return res.status(422).json({ success: false, message: "Gudang induk wajib dipilih" });
+      }
+
+      const warehouse = await MasterWarehouseModel.findById(id_gudang_induk);
+      if (!warehouse) {
+        return res.status(404).json({ success: false, message: "Gudang induk tidak ditemukan" });
+      }
+
       const existing = await ItemModel.findByResi(no_resi);
       if (existing) {
-        return res
-          .status(409)
-          .json({ success: false, message: "Resi is already use" });
+        return res.status(409).json({ success: false, message: "Resi sudah digunakan" });
       }
 
       const barang = await ItemModel.create({
         no_resi,
         label_barang,
-        jumlah_koli,
+        jumlah_koli: Number(jumlah_koli),
         tgl_masuk,
-        tgl_ambil,
+        estimasi_tgl_keluar,
         kota_asal_barang,
         kota_tujuan_keluar,
-        biaya,
+        biaya: biaya !== undefined ? Number(biaya) : 0,
         nama_penerima,
         no_telp_penerima,
         nama_pengirim,
         no_telp_pengirim,
         id_gudang_induk,
-        id_zona,
       });
 
       return res.status(201).json({
         success: true,
-        message: "Successfuly added item",
+        message: "Barang berhasil didata",
         data: { barang },
       });
     } catch (error) {
@@ -159,16 +210,14 @@ const ItemController = {
     }
   },
 
-  // -------------------------------------------------------------------------
+  // ---------------------------------------------------------------------
   // PUT /api/barang/:id
-  // -------------------------------------------------------------------------
+  // ---------------------------------------------------------------------
   async updateBarang(req, res) {
     try {
       const barang = await ItemModel.findById(req.params.id);
       if (!barang) {
-        return res
-          .status(404)
-          .json({ success: false, message: "item not Found" });
+        return res.status(404).json({ success: false, message: "Barang tidak ditemukan" });
       }
 
       if (req.body.status && !VALID_STATUSES.includes(req.body.status)) {
@@ -178,20 +227,30 @@ const ItemController = {
         });
       }
 
-      // Cek duplikat no_resi jika diubah
+      if (req.body.jumlah_koli !== undefined) {
+        if (!Number.isInteger(Number(req.body.jumlah_koli)) || Number(req.body.jumlah_koli) <= 0) {
+          return res.status(422).json({
+            success: false,
+            message: "Jumlah koli harus berupa angka bulat minimal 1",
+          });
+        }
+      }
+
+      if (req.body.biaya !== undefined && Number(req.body.biaya) < 0) {
+        return res.status(422).json({ success: false, message: "Biaya tidak boleh bernilai negatif" });
+      }
+
       if (req.body.no_resi && req.body.no_resi !== barang.no_resi) {
         const duplicate = await ItemModel.findByResi(req.body.no_resi);
         if (duplicate) {
-          return res
-            .status(409)
-            .json({ success: false, message: "Resi is already used" });
+          return res.status(409).json({ success: false, message: "Resi sudah digunakan" });
         }
       }
 
       const updated = await ItemModel.update(req.params.id, req.body);
       return res.status(200).json({
         success: true,
-        message: "Successfuly update item",
+        message: "Barang berhasil diperbarui",
         data: { barang: updated },
       });
     } catch (error) {
@@ -199,40 +258,31 @@ const ItemController = {
     }
   },
 
-  // -------------------------------------------------------------------------
+  // ---------------------------------------------------------------------
   // DELETE /api/barang/:id
-  // -------------------------------------------------------------------------
+  // ---------------------------------------------------------------------
   async deleteBarang(req, res) {
     try {
       const deleted = await ItemModel.delete(req.params.id);
       if (!deleted) {
-        return res
-          .status(404)
-          .json({ success: false, message: "Barang tidak ditemukan" });
+        return res.status(404).json({ success: false, message: "Barang tidak ditemukan" });
       }
-      return res
-        .status(200)
-        .json({ success: true, message: "Barang berhasil dihapus" });
+      return res.status(200).json({ success: true, message: "Barang berhasil dihapus" });
     } catch (error) {
       return res.status(500).json({ success: false, message: error.message });
     }
   },
 
-  // Menampilkan barang berdasarkan zona yang dicari
+  // ---------------------------------------------------------------------
+  // GET /api/barang/zone/:id_zone  - items currently placed in a zone
+  // ---------------------------------------------------------------------
   async showByZone(req, res) {
     try {
-      const search_zone = await ZoneModel.findById(req.body.id_zone);
-      if (!search_zone) {
-        return res
-          .status(404)
-          .json({ success: false, message: "Zone is not found" });
+      const zone = await ZoneModel.findById(req.params.id_zone);
+      if (!zone) {
+        return res.status(404).json({ success: false, message: "Zone tidak ditemukan" });
       }
-      const results = await ItemModel.findItemsByZone(search_zone.id);
-      if (results.length === 0) {
-        return res
-          .status(404)
-          .json({ success: false, message: "There are no item in that Zone" });
-      }
+      const results = await ItemModel.findItemsByZone(zone.id);
       return res.status(200).json({ success: true, data: { results } });
     } catch (error) {
       return res.status(500).json({ success: false, message: error.message });

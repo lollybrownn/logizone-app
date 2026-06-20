@@ -1,5 +1,5 @@
 const ItemModel = require("../models/ItemModel");
-const ZonaModel = require("../models/ZoneModel");
+const ZoneModel = require("../models/ZoneModel");
 const HistoryItemModel = require("../models/HistoryItemModel");
 
 const DashboardController = {
@@ -21,7 +21,7 @@ const DashboardController = {
         ZoneModel.findAll(),
       ]);
 
-      const totalCapacity = zones.reduce((sum, z) => sum + z.kapasitas_maks, 0);
+      const totalCapacity = zones.reduce((sum, z) => sum + z.kapasitas, 0);
       const totalFilled = zones.reduce((sum, z) => sum + z.kapasitas_terisi, 0);
 
       const today = new Date();

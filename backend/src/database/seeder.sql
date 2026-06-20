@@ -11,37 +11,37 @@ INSERT INTO
 VALUES
     (
         'admin_owner',
-        '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
+        '$2a$10$zZgyHwOq4D1MWaovVJGPZuTOwbE96Q1jqjqp4t4x8C.N9sEpHVLrO',
         'Owner',
         'Active'
     ),
     (
         'budi_ops',
-        '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
+        '$2a$10$zZgyHwOq4D1MWaovVJGPZuTOwbE96Q1jqjqp4t4x8C.N9sEpHVLrO',
         'Staff Operasional',
         'Active'
     ),
     (
         'sari_ops',
-        '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
+        '$2a$10$zZgyHwOq4D1MWaovVJGPZuTOwbE96Q1jqjqp4t4x8C.N9sEpHVLrO',
         'Staff Operasional',
         'Active'
     ),
     (
         'deni_gudang',
-        '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
+        '$2a$10$zZgyHwOq4D1MWaovVJGPZuTOwbE96Q1jqjqp4t4x8C.N9sEpHVLrO',
         'Staff Gudang',
         'Active'
     ),
     (
         'rina_gudang',
-        '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
+        '$2a$10$zZgyHwOq4D1MWaovVJGPZuTOwbE96Q1jqjqp4t4x8C.N9sEpHVLrO',
         'Staff Gudang',
         'Active'
     ),
     (
         'tono_gudang',
-        '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
+        '$2a$10$zZgyHwOq4D1MWaovVJGPZuTOwbE96Q1jqjqp4t4x8C.N9sEpHVLrO',
         'Staff Gudang',
         'Inactive'
     );
@@ -352,7 +352,7 @@ INSERT INTO
 VALUES
     -- History for Picked Up item (id_barang = 8)
     (
-        'Pickup',
+        'Ambil di Gudang',
         5.5,
         20000,
         0,
@@ -370,7 +370,7 @@ VALUES
     ),
     -- History for Completed item (id_barang = 9)
     (
-        'Delivery',
+        'Diantar',
         75.0,
         50000,
         15000,
@@ -388,7 +388,7 @@ VALUES
     ),
     -- History for Completed item (id_barang = 10)
     (
-        'Delivery',
+        'Diantar',
         95.0,
         75000,
         25000,
@@ -406,7 +406,7 @@ VALUES
     ),
     -- Extra historical records for income reporting
     (
-        'Pickup',
+        'Ambil di Gudang',
         3.2,
         10000,
         0,
@@ -423,7 +423,7 @@ VALUES
         5
     ),
     (
-        'Return',
+        'Diantar',
         12.0,
         30000,
         10000,

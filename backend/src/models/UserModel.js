@@ -28,7 +28,7 @@ const UserModel = {
   async create({ username, password, role }) {
     const hashed_password = await bcrpyt.hash(password, 10);
     const sql =
-      "INSERT INTO users(username,password,role) VALUES ($1,$2,$3) RETURNING *";
+      "INSERT INTO users(username,password,role) VALUES ($1,$2,$3) RETURNING id, username, role, status, created_at";
     const result = await db.query(sql, [username, hashed_password, role]);
     return result.rows[0];
   },

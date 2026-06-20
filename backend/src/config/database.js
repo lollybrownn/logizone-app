@@ -7,8 +7,8 @@ const pool = new Pool({
   host: process.env.DB_HOST || "localhost",
   port: process.env.DB_PORT || 5432,
   user: process.env.DB_USER || "root",
-  password: process.env.DB_PASSWORD || "",
-  database: process.env.DB_NAME || "myapp_db",
+  password: process.env.DB_PASSWORD || "michael23",
+  database: process.env.DB_NAME || "logizone_db",
 });
 
 // Test connection on startup

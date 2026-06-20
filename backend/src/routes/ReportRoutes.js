@@ -5,6 +5,6 @@ const { authenticate, authorize } = require("../middlewares/authMiddleware");
 
 router.get("/summary", authenticate, authorize("Owner"), ReportController.getSummaryReport);
 router.get("/financial", authenticate, authorize("Owner"), ReportController.getFinancialReport);
-router.get("/logistic", authenticate, authorize("Owner"), ReportController.getLogisticReports);
+router.get("/logistic", authenticate, authorize("Owner"), ReportController.getLogisticReport);
 
 module.exports = router;

@@ -17,6 +17,12 @@ router.get(
     authorize("Staff Operasional", "Staff Gudang", "Owner"),
     ItemController.showById,
 );
+router.post(
+    "/",
+    authenticate,
+    authorize("Staff Operasional"),
+    ItemController.createBarang,
+);
 router.put("/:id", authenticate, authorize("Staff Operasional", "Staff Gudang"), ItemController.updateBarang)
 router.delete("/:id", authenticate, authorize("Owner"), ItemController.deleteBarang);
 

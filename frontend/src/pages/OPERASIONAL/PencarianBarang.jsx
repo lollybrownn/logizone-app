@@ -28,9 +28,9 @@ export const PencarianBarang = () => {
                     <div className="flex gap-3">
                         <div className="relative flex-1">
                             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
-                            <input 
-                                type="text" 
-                                placeholder="ID Resi atau nama barang..." 
+                            <input
+                                type="text"
+                                placeholder="ID Resi atau nama barang..."
                                 className="w-full bg-white border border-gray-200 rounded-xl py-2.5 pl-12 pr-4 text-sm outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 transition-all placeholder:text-gray-300"
                             />
                         </div>
