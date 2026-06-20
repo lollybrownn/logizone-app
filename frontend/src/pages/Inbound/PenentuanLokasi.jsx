@@ -40,8 +40,8 @@ export const PenentuanLokasi = () => {
                             </div>
                             <p className="text-[10px] text-gray-500 font-bold mb-2 uppercase">{zone.label}</p>
                             <div className="w-full bg-gray-100 rounded-full h-1.5">
-                                <div 
-                                    className="bg-blue-600 h-1.5 rounded-full" 
+                                <div
+                                    className="bg-blue-600 h-1.5 rounded-full"
                                     style={{ width: `${zone.progress}%` }}
                                 ></div>
                             </div>
@@ -52,19 +52,17 @@ export const PenentuanLokasi = () => {
                 {/* Filter & Search Bar */}
                 <div className="flex justify-between items-center mb-6">
                     <div className="flex bg-gray-50 p-1 rounded-xl border border-gray-100">
-                        <button 
+                        <button
                             onClick={() => setActiveTab("belum")}
-                            className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${
-                                activeTab === "belum" ? "bg-white shadow-sm text-gray-800" : "text-gray-400"
-                            }`}
+                            className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${activeTab === "belum" ? "bg-white shadow-sm text-gray-800" : "text-gray-400"
+                                }`}
                         >
                             Belum Ditempatkan <span className="ml-2 opacity-50 font-normal">3</span>
                         </button>
-                        <button 
+                        <button
                             onClick={() => setActiveTab("sudah")}
-                            className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${
-                                activeTab === "sudah" ? "bg-white shadow-sm text-gray-800" : "text-gray-400"
-                            }`}
+                            className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${activeTab === "sudah" ? "bg-white shadow-sm text-gray-800" : "text-gray-400"
+                                }`}
                         >
                             Sudah Ditempatkan <span className="ml-2 opacity-50 font-normal">4</span>
                         </button>
@@ -72,9 +70,9 @@ export const PenentuanLokasi = () => {
 
                     <div className="relative w-72">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                        <input 
-                            type="text" 
-                            placeholder="Cari barang, resi, atau zona..." 
+                        <input
+                            type="text"
+                            placeholder="Cari barang, resi, atau zona..."
                             className="w-full bg-gray-50 border border-gray-100 rounded-xl py-2.5 pl-10 pr-4 text-xs outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
                         />
                     </div>
