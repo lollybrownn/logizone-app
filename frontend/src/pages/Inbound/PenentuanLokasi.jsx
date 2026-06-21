@@ -1,237 +1,203 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import { Sidebar } from "../../components/Sidebar";
-import { Search } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { useZones } from "../../context/ZoneContext";
 import { useToast } from "../../context/ToastContext";
-import { barangApi } from "../../api/barangApi";
-import { placementApi } from "../../api/placementApi";
+import { zoneApi } from "../../api/zoneApi";
 
-export const PenentuanLokasi = () => {
+const EMPTY_FORM = { kodeZona: "", namaZona: "", kapasitas: "", deskripsi: "" };
+
+function ZonaModal({ zone, onClose, onSaved }) {
     const toast = useToast();
-    const { zones, refresh: refreshZones } = useZones();
+    const isEdit = Boolean(zone);
+    const [form, setForm] = useState(
+        isEdit
+            ? { kodeZona: zone.kode_zona, namaZona: zone.nama_zona, kapasitas: zone.kapasitas, deskripsi: zone.deskripsi || "" }
+            : EMPTY_FORM,
+    );
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [error, setError] = useState("");
 
-    const [activeTab, setActiveTab] = useState("belum"); // 'belum' | 'sudah'
-    const [search, setSearch] = useState("");
+    function update(field, value) {
+        setForm((prev) => ({ ...prev, [field]: value }));
+    }
 
-    const [unplaced, setUnplaced] = useState([]);
-    const [placed, setPlaced] = useState([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [selectedZone, setSelectedZone] = useState({}); // { [id_barang]: id_zona }
-    const [submittingId, setSubmittingId] = useState(null);
+    async function handleSubmit(e) {
+        e.preventDefault();
+        setError("");
 
-    const loadData = useCallback(async () => {
-        setIsLoading(true);
-        try {
-            const [unplacedRes, placedRes] = await Promise.all([
-                barangApi.unplaced(),
-                barangApi.list({ status: "Stored", per_page: 100 }),
-            ]);
-            setUnplaced(unplacedRes.data.barang || []);
-            setPlaced(placedRes.data.barang || []);
-        } catch (err) {
-            toast.error(err.message || "Gagal memuat data penempatan");
-        } finally {
-            setIsLoading(false);
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
-    useEffect(() => {
-        loadData();
-    }, [loadData]);
-
-    const filteredUnplaced = useMemo(() => {
-        if (!search) return unplaced;
-        const q = search.toLowerCase();
-        return unplaced.filter(
-            (b) => b.label_barang?.toLowerCase().includes(q) || b.no_resi?.toLowerCase().includes(q),
-        );
-    }, [unplaced, search]);
-
-    const filteredPlaced = useMemo(() => {
-        if (!search) return placed;
-        const q = search.toLowerCase();
-        return placed.filter(
-            (b) =>
-                b.label_barang?.toLowerCase().includes(q) ||
-                b.no_resi?.toLowerCase().includes(q) ||
-                b.nama_zona?.toLowerCase().includes(q),
-        );
-    }, [placed, search]);
-
-    async function handleAssign(idBarang) {
-        const idZona = selectedZone[idBarang];
-        if (!idZona) {
-            toast.error("Pilih zona terlebih dahulu");
+        if (!form.kodeZona || !form.namaZona || !form.kapasitas) {
+            setError("Kode, nama, dan kapasitas wajib diisi");
             return;
         }
-        setSubmittingId(idBarang);
+        if (Number(form.kapasitas) <= 0) {
+            setError("Kapasitas harus lebih dari 0");
+            return;
+        }
+
+        setIsSubmitting(true);
         try {
-            await placementApi.assign(idBarang, Number(idZona));
-            toast.success("Barang berhasil ditempatkan ke zona");
-            await Promise.all([loadData(), refreshZones()]);
+            const payload = { ...form, kapasitas: Number(form.kapasitas) };
+            if (isEdit) {
+                await zoneApi.update(zone.id, payload);
+                toast.success("Zona berhasil diperbarui");
+            } else {
+                await zoneApi.create(payload);
+                toast.success("Zona berhasil dibuat");
+            }
+            onSaved();
         } catch (err) {
-            toast.error(err.message || "Gagal menempatkan barang");
+            setError(err.message || "Gagal menyimpan zona");
         } finally {
-            setSubmittingId(null);
+            setIsSubmitting(false);
         }
     }
 
-    async function handleMove(idBarang) {
-        const idZona = selectedZone[idBarang];
-        if (!idZona) {
-            toast.error("Pilih zona tujuan terlebih dahulu");
-            return;
-        }
-        setSubmittingId(idBarang);
-        try {
-            await placementApi.move(idBarang, Number(idZona));
-            toast.success("Lokasi barang berhasil diperbarui");
-            await Promise.all([loadData(), refreshZones()]);
-        } catch (err) {
-            toast.error(err.message || "Gagal memindahkan barang");
-        } finally {
-            setSubmittingId(null);
-        }
-    }
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+            <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-8">
+                <div className="flex justify-between items-start mb-6">
+                    <h2 className="text-lg font-bold text-gray-800">{isEdit ? "Edit Zona" : "Zona Baru"}</h2>
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+                        <X size={20} />
+                    </button>
+                </div>
 
-    const rows = activeTab === "belum" ? filteredUnplaced : filteredPlaced;
+                <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+                    {error && (
+                        <div className="bg-red-50 border border-red-100 text-red-600 text-xs rounded-lg px-4 py-3">
+                            {error}
+                        </div>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="flex flex-col gap-2">
+                            <label className="text-[11px] font-bold text-gray-700 uppercase">Kode</label>
+                            <input
+                                type="text"
+                                value={form.kodeZona}
+                                onChange={(e) => update("kodeZona", e.target.value)}
+                                placeholder="ZN-D"
+                                className="w-full bg-gray-50 border border-gray-100 rounded-lg h-10 px-4 text-sm outline-none focus:ring-2 focus:ring-blue-500/20"
+                            />
+                        </div>
+                        <div className="flex flex-col gap-2">
+                            <label className="text-[11px] font-bold text-gray-700 uppercase">Kapasitas</label>
+                            <input
+                                type="number"
+                                min="1"
+                                value={form.kapasitas}
+                                onChange={(e) => update("kapasitas", e.target.value)}
+                                className="w-full bg-gray-50 border border-gray-100 rounded-lg h-10 px-4 text-sm outline-none focus:ring-2 focus:ring-blue-500/20"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                        <label className="text-[11px] font-bold text-gray-700 uppercase">Nama</label>
+                        <input
+                            type="text"
+                            value={form.namaZona}
+                            onChange={(e) => update("namaZona", e.target.value)}
+                            className="w-full bg-gray-50 border border-gray-100 rounded-lg h-10 px-4 text-sm outline-none focus:ring-2 focus:ring-blue-500/20"
+                        />
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                        <label className="text-[11px] font-bold text-gray-700 uppercase">Deskripsi</label>
+                        <input
+                            type="text"
+                            value={form.deskripsi}
+                            onChange={(e) => update("deskripsi", e.target.value)}
+                            className="w-full bg-gray-50 border border-gray-100 rounded-lg h-10 px-4 text-sm outline-none focus:ring-2 focus:ring-blue-500/20"
+                        />
+                    </div>
+
+                    <div className="flex justify-end gap-3 mt-2">
+                        <button type="button" onClick={onClose} disabled={isSubmitting} className="px-6 py-2 text-xs font-bold text-gray-500 border border-gray-100 rounded-lg hover:bg-gray-50 disabled:opacity-50">
+                            Batal
+                        </button>
+                        <button type="submit" disabled={isSubmitting} className="px-6 py-2 text-xs font-bold text-white bg-[#1D5ABF] rounded-lg hover:bg-blue-700 shadow-md disabled:opacity-60">
+                            {isSubmitting ? "Menyimpan..." : "Simpan"}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+}
+
+export const ManajemenZona = () => {
+    const { zones, refresh } = useZones();
+    const [modalState, setModalState] = useState(null); // null | 'new' | zone object
 
     return (
         <div className="flex flex-row min-h-screen bg-white">
             <Sidebar className="flex-none" />
 
             <div className="flex-1 p-10 bg-white">
-                {/* Header */}
-                <header className="mb-8">
-                    <h1 className="text-2xl font-bold text-gray-900 mb-1">Penentuan Lokasi Penyimpanan</h1>
-                    <p className="text-sm text-blue-500 font-medium">Tetapkan zona untuk barang di gudang</p>
+                <header className="flex justify-between items-start mb-8">
+                    <div>
+                        <h1 className="text-2xl font-bold text-gray-900 mb-1">Manajemen Zona Gudang</h1>
+                        <p className="text-sm text-blue-400">Tambah, ubah, dan hapus zona penyimpanan</p>
+                    </div>
+                    <button
+                        onClick={() => setModalState("new")}
+                        className="bg-[#1D5ABF] hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 shadow-sm transition-all active:scale-95"
+                    >
+                        <Plus size={16} /> Zona Baru
+                    </button>
                 </header>
 
-                {/* Zona Cards Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
-                    {zones.map((zone) => {
-                        const progress = zone.kapasitas > 0 ? Math.round((zone.kapasitas_terisi / zone.kapasitas) * 100) : 0;
-                        return (
-                            <div key={zone.id} className="p-5 rounded-xl border border-gray-100 shadow-sm bg-white">
-                                <div className="flex justify-between items-center mb-4">
-                                    <span className="font-bold text-gray-800">{zone.kode_zona}</span>
-                                    <span className="text-[10px] bg-gray-50 px-2 py-1 rounded text-gray-400 font-bold border border-gray-100">
-                                        {zone.kapasitas_terisi}/{zone.kapasitas}
-                                    </span>
-                                </div>
-                                <p className="text-[10px] text-gray-500 font-bold mb-2 uppercase">{zone.nama_zona}</p>
-                                <div className="w-full bg-gray-100 rounded-full h-1.5">
-                                    <div
-                                        className="bg-blue-600 h-1.5 rounded-full"
-                                        style={{ width: `${Math.min(progress, 100)}%` }}
-                                    ></div>
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
-
-                {/* Filter & Search Bar */}
-                <div className="flex justify-between items-center mb-6">
-                    <div className="flex bg-gray-50 p-1 rounded-xl border border-gray-100">
-                        <button
-                            onClick={() => setActiveTab("belum")}
-                            className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${activeTab === "belum" ? "bg-white shadow-sm text-gray-800" : "text-gray-400"
-                                }`}
-                        >
-                            Belum Ditempatkan <span className="ml-2 opacity-50 font-normal">{unplaced.length}</span>
-                        </button>
-                        <button
-                            onClick={() => setActiveTab("sudah")}
-                            className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${activeTab === "sudah" ? "bg-white shadow-sm text-gray-800" : "text-gray-400"
-                                }`}
-                        >
-                            Sudah Ditempatkan <span className="ml-2 opacity-50 font-normal">{placed.length}</span>
-                        </button>
-                    </div>
-
-                    <div className="relative w-72">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                        <input
-                            type="text"
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            placeholder="Cari barang, resi, atau zona..."
-                            className="w-full bg-gray-50 border border-gray-100 rounded-xl py-2.5 pl-10 pr-4 text-xs outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
-                        />
-                    </div>
-                </div>
-
-                {/* Table Section */}
                 <div className="rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="text-[13px] text-gray-500 border-b border-gray-50">
-                                <th className="px-8 py-5 font-medium">Resi</th>
-                                <th className="px-6 py-5 font-medium text-center">Nama Barang</th>
-                                <th className="px-6 py-5 font-medium text-center">Jumlah Koli</th>
-                                <th className="px-6 py-5 font-medium text-center">
-                                    {activeTab === "belum" ? "Pilih Zona" : "Zona Saat Ini"}
-                                </th>
+                                <th className="px-8 py-5 font-medium">Kode</th>
+                                <th className="px-6 py-5 font-medium">Nama Zona</th>
+                                <th className="px-6 py-5 font-medium">Deskripsi</th>
+                                <th className="px-6 py-5 font-medium text-center">Kapasitas Koli</th>
+                                <th className="px-6 py-5 font-medium text-center">Terisi</th>
                                 <th className="px-6 py-5 font-medium text-center">Aksi</th>
                             </tr>
                         </thead>
                         <tbody className="text-[14px]">
-                            {isLoading ? (
-                                <tr>
-                                    <td colSpan="5" className="px-6 py-20 text-center text-gray-400">Memuat data...</td>
-                                </tr>
-                            ) : rows.length > 0 ? (
-                                rows.map((item) => (
-                                    <tr key={item.id_barang} className="border-t border-gray-50">
-                                        <td className="px-8 py-4 font-bold text-gray-900">{item.no_resi}</td>
-                                        <td className="px-6 py-4 text-center text-gray-600">{item.label_barang}</td>
-                                        <td className="px-6 py-4 text-center text-gray-600">{item.jumlah_koli}</td>
-                                        <td className="px-6 py-4 text-center">
-                                            {activeTab === "sudah" && (
-                                                <span className="text-xs text-gray-500 mr-2">{item.nama_zona}</span>
-                                            )}
-                                            <select
-                                                value={selectedZone[item.id_barang] || ""}
-                                                onChange={(e) =>
-                                                    setSelectedZone((prev) => ({ ...prev, [item.id_barang]: e.target.value }))
-                                                }
-                                                className="bg-gray-50 border border-gray-100 rounded-lg h-9 px-2 text-xs outline-none focus:ring-2 focus:ring-blue-500/20"
-                                            >
-                                                <option value="">Pilih Zona</option>
-                                                {zones.map((z) => (
-                                                    <option key={z.id} value={z.id}>
-                                                        {z.kode_zona} ({z.kapasitas - z.kapasitas_terisi} koli kosong)
-                                                    </option>
-                                                ))}
-                                            </select>
-                                        </td>
-                                        <td className="px-6 py-4 text-center">
-                                            <button
-                                                onClick={() =>
-                                                    activeTab === "belum" ? handleAssign(item.id_barang) : handleMove(item.id_barang)
-                                                }
-                                                disabled={submittingId === item.id_barang}
-                                                className="bg-[#1D5ABF] hover:bg-blue-700 text-white px-4 py-1.5 rounded-lg text-xs font-bold disabled:opacity-60"
-                                            >
-                                                {submittingId === item.id_barang
-                                                    ? "..."
-                                                    : activeTab === "belum" ? "Tetapkan" : "Perbarui"}
+                            {zones.length > 0 ? (
+                                zones.map((zone) => (
+                                    <tr key={zone.id} className="border-t border-gray-50 hover:bg-gray-50/50">
+                                        <td className="px-8 py-5 font-bold text-blue-600">{zone.kode_zona}</td>
+                                        <td className="px-6 py-5 text-gray-700">{zone.nama_zona}</td>
+                                        <td className="px-6 py-5 text-gray-400">{zone.deskripsi || "-"}</td>
+                                        <td className="px-6 py-5 text-center text-gray-600">{zone.kapasitas}</td>
+                                        <td className="px-6 py-5 text-center text-gray-600">{zone.kapasitas_terisi}/{zone.kapasitas}</td>
+                                        <td className="px-6 py-5 text-center">
+                                            <button onClick={() => setModalState(zone)} className="text-blue-600 font-semibold hover:underline">
+                                                Edit
                                             </button>
                                         </td>
                                     </tr>
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan="5" className="px-6 py-20 text-center text-gray-400 italic">
-                                        Data barang {activeTab === "belum" ? "yang belum ditempatkan" : "yang sudah ditempatkan"} kosong.
+                                    <td colSpan="6" className="px-6 py-20 text-center text-gray-400 italic">
+                                        Belum ada zona terdaftar.
                                     </td>
                                 </tr>
                             )}
                         </tbody>
                     </table>
                 </div>
+
+                {modalState && (
+                    <ZonaModal
+                        zone={modalState === "new" ? null : modalState}
+                        onClose={() => setModalState(null)}
+                        onSaved={() => {
+                            setModalState(null);
+                            refresh();
+                        }}
+                    />
+                )}
             </div>
         </div>
     );

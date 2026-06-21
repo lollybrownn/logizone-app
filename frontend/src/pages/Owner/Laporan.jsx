@@ -1,51 +1,152 @@
 import { useCallback, useEffect, useState } from "react";
 import { Sidebar } from "../../components/Sidebar";
-import { Download, TrendingUp, Package } from "lucide-react";
-import { reportApi } from "../../api/reportApi";
+import { Plus, X } from "lucide-react";
+import { userApi } from "../../api/userApi";
 import { useToast } from "../../context/ToastContext";
 
-const formatRupiah = (value) =>
-    new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(value || 0);
+const ROLES = ["Owner", "Staff Operasional", "Staff Gudang"];
 
-const formatDate = (value) =>
-    value ? new Date(value).toLocaleString("id-ID", { day: "numeric", month: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "-";
+const roleBadgeStyle = (role) => {
+    switch (role) {
+        case "Owner": return "bg-purple-50 text-purple-600 border-purple-100";
+        case "Staff Operasional": return "bg-pink-50 text-pink-600 border-pink-100";
+        case "Staff Gudang": return "bg-violet-50 text-violet-600 border-violet-100";
+        default: return "bg-gray-50 text-gray-500 border-gray-100";
+    }
+};
 
-function exportToCsv(filename, rows, headers) {
-    const csvContent = [
-        headers.map((h) => h.label).join(","),
-        ...rows.map((row) => headers.map((h) => `"${String(row[h.key] ?? "").replace(/"/g, '""')}"`).join(",")),
-    ].join("\n");
+function AccountModal({ account, onClose, onSaved }) {
+    const toast = useToast();
+    const isEdit = Boolean(account);
+    const [username, setUsername] = useState(account?.username || "");
+    const [password, setPassword] = useState("");
+    const [role, setRole] = useState(account?.role || ROLES[0]);
+    const [status, setStatus] = useState(account?.status || "Active");
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [error, setError] = useState("");
 
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    link.click();
-    URL.revokeObjectURL(url);
+    async function handleSubmit(e) {
+        e.preventDefault();
+        setError("");
+
+        if (!username) {
+            setError("Username wajib diisi");
+            return;
+        }
+        if (!isEdit && !password) {
+            setError("Password wajib diisi");
+            return;
+        }
+
+        setIsSubmitting(true);
+        try {
+            if (isEdit) {
+                await userApi.update(account.id, { username, role, status });
+                toast.success("Akun berhasil diperbarui");
+            } else {
+                await userApi.create({ username, password, role });
+                toast.success("Akun berhasil dibuat");
+            }
+            onSaved();
+        } catch (err) {
+            setError(err.message || "Gagal menyimpan akun");
+        } finally {
+            setIsSubmitting(false);
+        }
+    }
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+            <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-8">
+                <div className="flex justify-between items-start mb-6">
+                    <h2 className="text-lg font-bold text-gray-800">{isEdit ? "Edit Akun" : "Buat Akun Baru"}</h2>
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+                        <X size={20} />
+                    </button>
+                </div>
+
+                <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+                    {error && (
+                        <div className="bg-red-50 border border-red-100 text-red-600 text-xs rounded-lg px-4 py-3">
+                            {error}
+                        </div>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="flex flex-col gap-2">
+                            <label className="text-[11px] font-bold text-gray-700 uppercase">Username</label>
+                            <input
+                                type="text"
+                                value={username}
+                                onChange={(e) => setUsername(e.target.value)}
+                                className="w-full bg-gray-50 border border-gray-100 rounded-lg h-10 px-4 text-sm outline-none focus:ring-2 focus:ring-blue-500/20"
+                            />
+                        </div>
+                        <div className="flex flex-col gap-2">
+                            <label className="text-[11px] font-bold text-gray-700 uppercase">Role</label>
+                            <select
+                                value={role}
+                                onChange={(e) => setRole(e.target.value)}
+                                className="w-full bg-gray-50 border border-gray-100 rounded-lg h-10 px-3 text-sm outline-none focus:ring-2 focus:ring-blue-500/20"
+                            >
+                                {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+                            </select>
+                        </div>
+                    </div>
+
+                    {!isEdit && (
+                        <div className="flex flex-col gap-2">
+                            <label className="text-[11px] font-bold text-gray-700 uppercase">Password</label>
+                            <input
+                                type="password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                className="w-full bg-gray-50 border border-gray-100 rounded-lg h-10 px-4 text-sm outline-none focus:ring-2 focus:ring-blue-500/20"
+                            />
+                        </div>
+                    )}
+
+                    {isEdit && (
+                        <div className="flex flex-col gap-2">
+                            <label className="text-[11px] font-bold text-gray-700 uppercase">Status</label>
+                            <select
+                                value={status}
+                                onChange={(e) => setStatus(e.target.value)}
+                                className="w-full bg-gray-50 border border-gray-100 rounded-lg h-10 px-3 text-sm outline-none focus:ring-2 focus:ring-blue-500/20"
+                            >
+                                <option value="Active">Active</option>
+                                <option value="Inactive">Inactive</option>
+                            </select>
+                        </div>
+                    )}
+
+                    <div className="flex justify-end gap-3 mt-2">
+                        <button type="button" onClick={onClose} disabled={isSubmitting} className="px-6 py-2 text-xs font-bold text-gray-500 border border-gray-100 rounded-lg hover:bg-gray-50 disabled:opacity-50">
+                            Batal
+                        </button>
+                        <button type="submit" disabled={isSubmitting} className="px-6 py-2 text-xs font-bold text-white bg-[#1D5ABF] rounded-lg hover:bg-blue-700 shadow-md disabled:opacity-60">
+                            {isSubmitting ? "Menyimpan..." : "Simpan"}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
 }
 
-export const Laporan = () => {
+export const ManajemenAkun = () => {
     const toast = useToast();
-    const [activeTab, setActiveTab] = useState("pendapatan"); // 'pendapatan' | 'logistik'
-    const [summary, setSummary] = useState(null);
-    const [financial, setFinancial] = useState([]);
-    const [logistic, setLogistic] = useState([]);
+    const [users, setUsers] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [modalState, setModalState] = useState(null);
 
     const loadData = useCallback(async () => {
         setIsLoading(true);
         try {
-            const [summaryRes, financialRes, logisticRes] = await Promise.all([
-                reportApi.summary(),
-                reportApi.financial(),
-                reportApi.logistic(),
-            ]);
-            setSummary(summaryRes.data);
-            setFinancial(financialRes.data.financialSummary || []);
-            setLogistic(logisticRes.data.activityLog || []);
+            const res = await userApi.list();
+            setUsers(res.data.users || []);
         } catch (err) {
-            toast.error(err.message || "Gagal memuat laporan");
+            toast.error(err.message || "Gagal memuat data akun pengguna");
         } finally {
             setIsLoading(false);
         }
@@ -56,33 +157,6 @@ export const Laporan = () => {
         loadData();
     }, [loadData]);
 
-    function handleExportPendapatan() {
-        if (financial.length === 0) {
-            toast.error("Tidak ada data pendapatan untuk diekspor");
-            return;
-        }
-        exportToCsv("laporan-pendapatan.csv", financial, [
-            { key: "tgl_keluar", label: "Tanggal" },
-            { key: "label_barang", label: "Barang" },
-            { key: "berat_barang", label: "Berat (kg)" },
-            { key: "biaya_ekstra", label: "Biaya Tambahan" },
-            { key: "total_biaya", label: "Total" },
-        ]);
-    }
-
-    function handleExportLogistik() {
-        if (logistic.length === 0) {
-            toast.error("Tidak ada data logistik untuk diekspor");
-            return;
-        }
-        exportToCsv("laporan-logistik.csv", logistic, [
-            { key: "tanggal", label: "Tanggal" },
-            { key: "aksi", label: "Aksi" },
-            { key: "no_resi", label: "Barang" },
-            { key: "keterangan", label: "Keterangan" },
-        ]);
-    }
-
     return (
         <div className="flex flex-row min-h-screen bg-white">
             <Sidebar className="flex-none" />
@@ -90,115 +164,68 @@ export const Laporan = () => {
             <div className="flex-1 p-10 bg-white">
                 <header className="flex justify-between items-start mb-8">
                     <div>
-                        <nav className="text-[11px] text-gray-400 mb-2 font-medium">Owner &gt; Laporan</nav>
-                        <h1 className="text-2xl font-bold text-gray-900 mb-1">Laporan Owner</h1>
-                        <p className="text-sm text-slate-400">Rekap logistik dan rekap pendapatan dari seluruh aktivitas gudang.</p>
+                        <h1 className="text-2xl font-bold text-gray-900 mb-1">Manajemen Akun Pengguna</h1>
+                        <p className="text-sm text-blue-400">Atur role setiap pengguna sistem</p>
                     </div>
-                    <div className="flex gap-3">
-                        <button onClick={handleExportPendapatan} className="flex items-center gap-2 border border-gray-200 px-4 py-2 rounded-lg text-xs font-bold text-gray-600 hover:bg-gray-50">
-                            <Download size={14} /> Export Pendapatan
-                        </button>
-                        <button onClick={handleExportLogistik} className="flex items-center gap-2 border border-gray-200 px-4 py-2 rounded-lg text-xs font-bold text-gray-600 hover:bg-gray-50">
-                            <Download size={14} /> Export Logistik
-                        </button>
-                    </div>
+                    <button
+                        onClick={() => setModalState("new")}
+                        className="bg-[#1D5ABF] hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 shadow-sm transition-all active:scale-95"
+                    >
+                        <Plus size={16} /> Akun Baru
+                    </button>
                 </header>
 
-                {/* Summary cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                    <div className="bg-gradient-to-br from-blue-600 to-blue-500 text-white p-6 rounded-2xl shadow-sm flex justify-between items-center">
-                        <div>
-                            <p className="text-[10px] font-bold uppercase tracking-wider opacity-80 mb-2">Total Pendapatan</p>
-                            <h3 className="text-3xl font-bold mb-1">{formatRupiah(summary?.totalIncome)}</h3>
-                            <p className="text-xs opacity-70">Dari {summary?.totalProcessedItems || 0} transaksi outbound</p>
-                        </div>
-                        <TrendingUp size={32} className="opacity-80" />
-                    </div>
-                    <div className="bg-white border border-gray-100 p-6 rounded-2xl shadow-sm flex justify-between items-center">
-                        <div>
-                            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2">Total Barang Diproses</p>
-                            <h3 className="text-3xl font-bold text-gray-800 mb-1">{summary?.totalProcessedItems || 0}</h3>
-                            <p className="text-xs text-gray-400">Berdasarkan histori barang</p>
-                        </div>
-                        <Package size={32} className="text-gray-300" />
-                    </div>
-                </div>
-
-                {/* Tabs */}
-                <div className="flex gap-2 mb-4">
-                    <button
-                        onClick={() => setActiveTab("pendapatan")}
-                        className={`px-4 py-2 text-xs font-bold rounded-lg border ${activeTab === "pendapatan" ? "bg-white shadow-sm border-gray-200 text-gray-800" : "border-transparent text-gray-400"}`}
-                    >
-                        Rekap Pendapatan
-                    </button>
-                    <button
-                        onClick={() => setActiveTab("logistik")}
-                        className={`px-4 py-2 text-xs font-bold rounded-lg border ${activeTab === "logistik" ? "bg-white shadow-sm border-gray-200 text-gray-800" : "border-transparent text-gray-400"}`}
-                    >
-                        Laporan Logistik
-                    </button>
-                </div>
-
                 <div className="rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                    {activeTab === "pendapatan" ? (
-                        <table className="w-full text-left border-collapse">
-                            <thead>
-                                <tr className="text-[13px] text-gray-500 border-b border-gray-50">
-                                    <th className="px-8 py-5 font-medium">Tanggal</th>
-                                    <th className="px-6 py-5 font-medium">Barang</th>
-                                    <th className="px-6 py-5 font-medium text-center">Berat</th>
-                                    <th className="px-6 py-5 font-medium text-center">Biaya Tambahan</th>
-                                    <th className="px-6 py-5 font-medium text-center">Total</th>
-                                </tr>
-                            </thead>
-                            <tbody className="text-[14px]">
-                                {isLoading ? (
-                                    <tr><td colSpan="5" className="px-6 py-20 text-center text-gray-400">Memuat data...</td></tr>
-                                ) : financial.length > 0 ? (
-                                    financial.map((row, idx) => (
-                                        <tr key={idx} className="border-t border-gray-50">
-                                            <td className="px-8 py-4 text-gray-500">{formatDate(row.tgl_keluar)}</td>
-                                            <td className="px-6 py-4 font-semibold text-gray-800">{row.label_barang}</td>
-                                            <td className="px-6 py-4 text-center text-gray-600">{row.berat_barang} kg</td>
-                                            <td className="px-6 py-4 text-center text-gray-600">{formatRupiah(row.biaya_ekstra)}</td>
-                                            <td className="px-6 py-4 text-center font-bold text-gray-800">{formatRupiah(row.total_biaya)}</td>
-                                        </tr>
-                                    ))
-                                ) : (
-                                    <tr><td colSpan="5" className="px-6 py-20 text-center text-gray-400 italic">Tidak ada data pendapatan.</td></tr>
-                                )}
-                            </tbody>
-                        </table>
-                    ) : (
-                        <table className="w-full text-left border-collapse">
-                            <thead>
-                                <tr className="text-[13px] text-gray-500 border-b border-gray-50">
-                                    <th className="px-8 py-5 font-medium">Tanggal</th>
-                                    <th className="px-6 py-5 font-medium">Aksi</th>
-                                    <th className="px-6 py-5 font-medium">Barang</th>
-                                    <th className="px-6 py-5 font-medium">Keterangan</th>
-                                </tr>
-                            </thead>
-                            <tbody className="text-[14px]">
-                                {isLoading ? (
-                                    <tr><td colSpan="4" className="px-6 py-20 text-center text-gray-400">Memuat data...</td></tr>
-                                ) : logistic.length > 0 ? (
-                                    logistic.map((row, idx) => (
-                                        <tr key={idx} className="border-t border-gray-50">
-                                            <td className="px-8 py-4 text-gray-500">{formatDate(row.tanggal)}</td>
-                                            <td className="px-6 py-4 font-bold text-gray-800">{row.aksi}</td>
-                                            <td className="px-6 py-4 text-gray-600">{row.no_resi}</td>
-                                            <td className="px-6 py-4 text-gray-500">{row.keterangan}</td>
-                                        </tr>
-                                    ))
-                                ) : (
-                                    <tr><td colSpan="4" className="px-6 py-20 text-center text-gray-400 italic">Tidak ada data logistik.</td></tr>
-                                )}
-                            </tbody>
-                        </table>
-                    )}
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className="text-[13px] text-gray-500 border-b border-gray-50">
+                                <th className="px-8 py-5 font-medium">Username</th>
+                                <th className="px-6 py-5 font-medium">Role</th>
+                                <th className="px-6 py-5 font-medium">Status</th>
+                                <th className="px-6 py-5 font-medium text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody className="text-[14px]">
+                            {isLoading ? (
+                                <tr><td colSpan="4" className="px-6 py-20 text-center text-gray-400">Memuat data...</td></tr>
+                            ) : users.length > 0 ? (
+                                users.map((u) => (
+                                    <tr key={u.id} className="border-t border-gray-50 hover:bg-gray-50/50">
+                                        <td className="px-8 py-5 font-bold text-gray-800">{u.username}</td>
+                                        <td className="px-6 py-5">
+                                            <span className={`px-3 py-1 rounded text-[12px] font-medium border ${roleBadgeStyle(u.role)}`}>
+                                                {u.role}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-5">
+                                            <span className={`px-3 py-1 rounded text-[12px] font-medium border ${u.status === "Active" ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-gray-50 text-gray-500 border-gray-100"}`}>
+                                                {u.status}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-5 text-center">
+                                            <button onClick={() => setModalState(u)} className="text-blue-600 font-semibold hover:underline">
+                                                Edit
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr><td colSpan="4" className="px-6 py-20 text-center text-gray-400 italic">Belum ada akun pengguna.</td></tr>
+                            )}
+                        </tbody>
+                    </table>
                 </div>
+
+                {modalState && (
+                    <AccountModal
+                        account={modalState === "new" ? null : modalState}
+                        onClose={() => setModalState(null)}
+                        onSaved={() => {
+                            setModalState(null);
+                            loadData();
+                        }}
+                    />
+                )}
             </div>
         </div>
     );
