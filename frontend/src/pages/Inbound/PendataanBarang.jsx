@@ -1,18 +1,44 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Sidebar } from "../../components/Sidebar";
 import { Plus, PackageSearch } from "lucide-react";
 import { ModalTambahBarang } from "../../components/ModalTambahBarang";
+import { barangApi } from "../../api/barangApi";
+import { useToast } from "../../context/ToastContext";
+
+const formatDate = (value) =>
+    value ? new Date(value).toLocaleDateString("id-ID", { day: "numeric", month: "numeric", year: "numeric" }) : "-";
 
 export const PendataanBarang = () => {
+    const toast = useToast();
     const [isModalOpen, setIsModalOpen] = useState(false);
-    // Data dikosongkan dulu untuk integrasi database nanti
-    const dataBarang = [];
+    const [dataBarang, setDataBarang] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    const loadData = useCallback(async () => {
+        setIsLoading(true);
+        try {
+            const res = await barangApi.list({ per_page: 50 });
+            setDataBarang(res.data.barang || []);
+        } catch (err) {
+            toast.error(err.message || "Gagal memuat data barang");
+        } finally {
+            setIsLoading(false);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    useEffect(() => {
+        loadData();
+    }, [loadData]);
 
     // Helper warna status sesuai gambar baru (hijau untuk completed, kuning untuk pending)
     const getStatusStyle = (status) => {
         switch (status) {
             case "Completed": return "bg-emerald-50 text-emerald-600 border-emerald-100";
+            case "Stored": return "bg-blue-50 text-blue-600 border-blue-100";
+            case "Picked Up": return "bg-cyan-50 text-cyan-600 border-cyan-100";
             case "Pending": return "bg-orange-50 text-orange-500 border-orange-100";
+            case "Registered": return "bg-purple-50 text-purple-500 border-purple-100";
             default: return "bg-gray-50 text-gray-500 border-gray-100";
         }
     };
@@ -54,20 +80,26 @@ export const PendataanBarang = () => {
                                 </tr>
                             </thead>
                             <tbody className="text-[14px]">
-                                {dataBarang.length > 0 ? (
-                                    dataBarang.map((item, index) => (
-                                        <tr key={index} className="border-t border-gray-50 hover:bg-gray-50/50 transition-colors">
-                                            <td className="px-8 py-5 font-bold text-gray-900">{item.resi}</td>
-                                            <td className="px-6 py-5 text-gray-600">{item.barang}</td>
-                                            <td className="px-6 py-5 text-center text-gray-600">{item.jumlah}</td>
+                                {isLoading ? (
+                                    <tr>
+                                        <td colSpan="6" className="px-6 py-24 text-center text-slate-400">
+                                            Memuat data...
+                                        </td>
+                                    </tr>
+                                ) : dataBarang.length > 0 ? (
+                                    dataBarang.map((item) => (
+                                        <tr key={item.id_barang} className="border-t border-gray-50 hover:bg-gray-50/50 transition-colors">
+                                            <td className="px-8 py-5 font-bold text-gray-900">{item.no_resi}</td>
+                                            <td className="px-6 py-5 text-gray-600">{item.label_barang}</td>
+                                            <td className="px-6 py-5 text-center text-gray-600">{item.jumlah_koli}</td>
                                             <td className="px-6 py-5 text-center">
                                                 <span className={`px-3 py-1 rounded text-[12px] font-medium border ${getStatusStyle(item.status)}`}>
                                                     {item.status}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-5 text-center text-gray-500">{item.tgl}</td>
+                                            <td className="px-6 py-5 text-center text-gray-500">{formatDate(item.tgl_masuk)}</td>
                                             <td className="px-6 py-5 text-center">
-                                                <button className="text-blue-600 hover:underline font-medium">Edit</button>
+                                                <span className="text-gray-300 text-xs">{item.nama_zona || "Belum ditempatkan"}</span>
                                             </td>
                                         </tr>
                                     ))
@@ -92,6 +124,7 @@ export const PendataanBarang = () => {
                         <ModalTambahBarang
                             isOpen={isModalOpen}
                             onClose={() => setIsModalOpen(false)}
+                            onCreated={loadData}
                         />
                     </div>
                 </div>

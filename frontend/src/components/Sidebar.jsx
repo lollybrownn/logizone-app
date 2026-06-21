@@ -9,7 +9,8 @@ import { HiOutlineDocumentReport } from "react-icons/hi";
 import { GoStack } from "react-icons/go";
 import { GoPeople } from "react-icons/go";
 import { IoLogOutOutline } from "react-icons/io5";
-import { useLocation, Link } from "react-router-dom"; // Tambahkan ini
+import { useLocation, useNavigate, Link } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 
 const SidebarHeader = () => {
@@ -26,11 +27,16 @@ const SidebarHeader = () => {
   )
 }
 
-const FooterLogOut = ({ icon: Icon }) => {
+const FooterLogOut = ({ icon: Icon, onClick }) => {
   return (
-    <div className="ms-auto flex items-center cursor-pointer hover:opacity-80">
+    <button
+      type="button"
+      onClick={onClick}
+      className="ms-auto flex items-center cursor-pointer hover:opacity-80"
+      aria-label="Logout"
+    >
       <Icon className="text-white text-xl" />
-    </div>
+    </button>
   )
 }
 
@@ -92,6 +98,16 @@ const SidebarSection = ({ title, children }) => (
 
 export const Sidebar = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, role, logout } = useAuth();
+
+  const displayName = user?.username || "User";
+  const initial = displayName.charAt(0).toUpperCase();
+
+  function handleLogout() {
+    logout();
+    navigate("/login");
+  }
 
   return (
     <div className="w-64 h-screen bg-[#0F172A] text-white flex flex-col flex-none border-r border-white/5">
@@ -140,48 +156,50 @@ export const Sidebar = () => {
           </Link>
         </SidebarSection>
 
-        <SidebarSection title="OWNER">
-          <Link to="/reports">
-            <SidebarItem
-              icon={HiOutlineDocumentReport}
-              label="Laporan"
-              active={location.pathname === "reports"}
-            />
-          </Link>
+        {role === "Owner" && (
+          <SidebarSection title="OWNER">
+            <Link to="/reports">
+              <SidebarItem
+                icon={HiOutlineDocumentReport}
+                label="Laporan"
+                active={location.pathname === "/reports"}
+              />
+            </Link>
 
-          <Link to="/zones">
-            <SidebarItem
-              icon={GoStack}
-              label="Manajemen Zona"
-              active={location.pathname === "/zones"}
-            />
-          </Link>
+            <Link to="/zones">
+              <SidebarItem
+                icon={GoStack}
+                label="Manajemen Zona"
+                active={location.pathname === "/zones"}
+              />
+            </Link>
 
-          <Link to="/warehouse">
-            <SidebarItem
-              icon={LuWarehouse}
-              label="Gudang Induk"
-              active={location.pathname === "/warehouse"}
-            />
-          </Link>
+            <Link to="/warehouse">
+              <SidebarItem
+                icon={LuWarehouse}
+                label="Gudang Induk"
+                active={location.pathname === "/warehouse"}
+              />
+            </Link>
 
-          <Link to="/users">
-            <SidebarItem
-              icon={GoPeople}
-              label="Manajemen Akun"
-              active={location.pathname === "/users"}
-            />
-          </Link>
-        </SidebarSection>
+            <Link to="/users">
+              <SidebarItem
+                icon={GoPeople}
+                label="Manajemen Akun"
+                active={location.pathname === "/users"}
+              />
+            </Link>
+          </SidebarSection>
+        )}
       </div>
 
       {/* --- FOOTER --- */}
       <div className="flex-none">
         <hr className="border-[#2A345B]" />
         <SidebarFooter>
-          <FooterProfile label="O" />
-          <ProfileName email="halo" role="Owner" />
-          <FooterLogOut icon={IoLogOutOutline} />
+          <FooterProfile label={initial} />
+          <ProfileName email={displayName} role={role} />
+          <FooterLogOut icon={IoLogOutOutline} onClick={handleLogout} />
         </SidebarFooter>
       </div>
 

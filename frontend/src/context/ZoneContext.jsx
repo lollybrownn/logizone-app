@@ -46,7 +46,7 @@ export function ZoneProvider({ children }) {
   }, [isAuthenticated, refresh]);
 
   const getZoneById = useCallback(
-    (id) => zones.find((z) => z.id_zona === Number(id)) || null,
+    (id) => zones.find((z) => z.id === Number(id)) || null,
     [zones],
   );
 

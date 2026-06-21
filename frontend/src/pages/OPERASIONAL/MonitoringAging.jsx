@@ -1,23 +1,77 @@
-import { useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Sidebar } from "../../components/Sidebar";
 import { Search, Clock, AlertTriangle } from "lucide-react";
+import { inventoryApi } from "../../api/inventoryApi";
+import { useToast } from "../../context/ToastContext";
+
+const formatDate = (value) =>
+    value ? new Date(value).toLocaleDateString("id-ID", { day: "numeric", month: "numeric", year: "numeric" }) : "-";
 
 export const MonitoringAging = () => {
-    // State untuk filter tab sesuai gambar (All Stock, Aging, Overdue)
+    const toast = useToast();
     const [activeTab, setActiveTab] = useState("All Stock");
+    const [search, setSearch] = useState("");
+    const [agingItems, setAgingItems] = useState([]);
+    const [overdueItems, setOverdueItems] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
 
-    // Ringkasan status di bagian atas sesuai referensi
+    const loadData = useCallback(async () => {
+        setIsLoading(true);
+        try {
+            const res = await inventoryApi.monitoring();
+            setAgingItems(res.data.agingItems || []);
+            setOverdueItems(res.data.overdueItems || []);
+        } catch (err) {
+            toast.error(err.message || "Gagal memuat data monitoring");
+        } finally {
+            setIsLoading(false);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    useEffect(() => {
+        loadData();
+    }, [loadData]);
+
     const summary = [
-        { label: "AGING (H-3)", count: 1, icon: <Clock className="text-orange-400" size={20} />, color: "border-orange-100" },
-        { label: "OVERDUE", count: 1, icon: <AlertTriangle className="text-red-400" size={20} />, color: "border-red-100" },
+        { label: "AGING (H-3)", count: agingItems.length, icon: <Clock className="text-orange-400" size={20} />, color: "border-orange-100" },
+        { label: "OVERDUE", count: overdueItems.length, icon: <AlertTriangle className="text-red-400" size={20} />, color: "border-red-100" },
     ];
 
-    // Data dikosongkan sesuai permintaan
-    const dataStok = [];
+    // Overdue items also satisfy the aging-window query on the backend in
+    // some edge cases, so de-dupe by id_barang when combining for "All Stock".
+    const allStock = useMemo(() => {
+        const overdueIds = new Set(overdueItems.map((i) => i.id_barang));
+        const combined = [
+            ...overdueItems.map((i) => ({ ...i, _statusLabel: "Overdue" })),
+            ...agingItems.filter((i) => !overdueIds.has(i.id_barang)).map((i) => ({ ...i, _statusLabel: "Aging" })),
+        ];
+        return combined;
+    }, [agingItems, overdueItems]);
+
+    const dataStok = useMemo(() => {
+        let rows;
+        if (activeTab === "Aging") rows = agingItems.map((i) => ({ ...i, _statusLabel: "Aging" }));
+        else if (activeTab === "Overdue") rows = overdueItems.map((i) => ({ ...i, _statusLabel: "Overdue" }));
+        else rows = allStock;
+
+        if (!search) return rows;
+        const q = search.toLowerCase();
+        return rows.filter(
+            (b) =>
+                b.label_barang?.toLowerCase().includes(q) ||
+                b.no_resi?.toLowerCase().includes(q) ||
+                b.nama_zona?.toLowerCase().includes(q),
+        );
+    }, [activeTab, agingItems, overdueItems, allStock, search]);
+
+    const statusBadge = (label) =>
+        label === "Overdue"
+            ? "bg-red-50 text-red-600 border-red-100"
+            : "bg-orange-50 text-orange-500 border-orange-100";
 
     return (
         <div className="flex flex-row min-h-screen bg-white">
-            {/* Sidebar di sisi kiri */}
             <Sidebar className="flex-none" />
 
             <div className="flex-1 p-10 bg-white">
@@ -52,7 +106,7 @@ export const MonitoringAging = () => {
                                     key={tab}
                                     onClick={() => setActiveTab(tab)}
                                     className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${
-                                        activeTab === tab 
+                                        activeTab === tab
                                         ? (tab === "Aging" ? "bg-orange-100 text-orange-600" : tab === "Overdue" ? "bg-red-100 text-red-600" : "bg-blue-100 text-blue-600")
                                         : "text-gray-400 hover:bg-gray-50"
                                     }`}
@@ -65,9 +119,11 @@ export const MonitoringAging = () => {
                         {/* Search Bar */}
                         <div className="relative">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
-                            <input 
-                                type="text" 
-                                placeholder="Cari barang, resi, atau zona..." 
+                            <input
+                                type="text"
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                placeholder="Cari barang, resi, atau zona..."
                                 className="w-full bg-white border border-gray-100 rounded-lg py-2 pl-10 pr-4 text-[11px] outline-none focus:ring-1 focus:ring-blue-500/20"
                             />
                         </div>
@@ -86,8 +142,25 @@ export const MonitoringAging = () => {
                             </tr>
                         </thead>
                         <tbody className="text-[13px]">
-                            {dataStok.length > 0 ? (
-                                null // Mapping data di sini nanti
+                            {isLoading ? (
+                                <tr>
+                                    <td colSpan="6" className="px-6 py-24 text-center text-gray-400">Memuat data...</td>
+                                </tr>
+                            ) : dataStok.length > 0 ? (
+                                dataStok.map((item) => (
+                                    <tr key={item.id_barang} className="border-t border-gray-50">
+                                        <td className="px-8 py-4 font-bold text-gray-900">{item.no_resi}</td>
+                                        <td className="px-6 py-4 text-center text-gray-600">{item.label_barang}</td>
+                                        <td className="px-6 py-4 text-center text-gray-500">{item.nama_zona || "-"}</td>
+                                        <td className="px-6 py-4 text-center text-gray-600">{item.jumlah_koli}</td>
+                                        <td className="px-6 py-4 text-center text-gray-500">{formatDate(item.estimasi_tgl_keluar)}</td>
+                                        <td className="px-8 py-4 text-center">
+                                            <span className={`px-3 py-1 rounded text-[11px] font-medium border ${statusBadge(item._statusLabel)}`}>
+                                                {item._statusLabel}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))
                             ) : (
                                 <tr>
                                     <td colSpan="6" className="px-6 py-24 text-center">
