@@ -2,8 +2,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Warehouse, Loader2 } from "lucide-react";
-import { authApi } from "../../api/authApi";
-import { useAuth } from "../../context/AuthContext";
+import { authApi } from "../api/authApi";
+import { useAuth } from "../context/AuthContext";
 import "./Login.css";
 
 export default function Login() {

@@ -1,146 +1,176 @@
-import { useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Sidebar } from "../../components/Sidebar";
-import { CheckCircle2, Search, MapPin } from "lucide-react";
-import { ModalDetailBarang } from "../../components/ModalDetailBarang";
+import { Search, Clock, AlertTriangle } from "lucide-react";
+import { inventoryApi } from "../../api/inventoryApi";
+import { useToast } from "../../context/ToastContext";
 
-const ValidationModal = ({ onClose, onOpenDetail }) => {
-    const [kategori, setKategori] = useState("Antar ke luar Kota");
+const formatDate = (value) =>
+    value ? new Date(value).toLocaleDateString("id-ID", { day: "numeric", month: "numeric", year: "numeric" }) : "-";
 
-    return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm p-4">
-            <div className="bg-white p-6 rounded-2xl w-full max-w-lg shadow-2xl">
-                <div className="flex items-center gap-2 mb-6 text-blue-600">
-                    <CheckCircle2 size={24} />
-                    <h2 className="text-xl font-bold text-gray-900">Validasi Outbond</h2>
-                </div>
+export const MonitoringAging = () => {
+    const toast = useToast();
+    const [activeTab, setActiveTab] = useState("All Stock");
+    const [search, setSearch] = useState("");
+    const [agingItems, setAgingItems] = useState([]);
+    const [overdueItems, setOverdueItems] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
 
-                <div className="border border-gray-200 rounded-lg p-4 mb-6">
-                    <div className="flex items-center gap-2">
-                        <p className="font-bold text-gray-900">Electronic</p>
-                        <span onClick={onOpenDetail} className="text-blue-500 cursor-pointer font-bold">ⓘ</span>
-                    </div>
-                    <p className="text-xs text-gray-400">RSI - 119</p>
-                </div>
+    const loadData = useCallback(async () => {
+        setIsLoading(true);
+        try {
+            const res = await inventoryApi.monitoring();
+            setAgingItems(res.data.agingItems || []);
+            setOverdueItems(res.data.overdueItems || []);
+        } catch (err) {
+            toast.error(err.message || "Gagal memuat data monitoring");
+        } finally {
+            setIsLoading(false);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
-                <div className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-bold text-gray-900 mb-2">Kategori Pengambilan</label>
-                        <select value={kategori} onChange={(e) => setKategori(e.target.value)} className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none">
-                            <option value="Antar ke luar Kota">Antar ke luar Kota</option>
-                            <option value="Ambil di Gudang">Ambil di Gudang</option>
-                        </select>
-                    </div>
-                    {kategori === "Antar ke luar Kota" && (
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-bold text-gray-900 mb-2">Berat Barang (Kg)</label>
-                                <input type="number" className="w-full p-3 bg-white border border-gray-200 rounded-lg text-sm outline-none focus:border-blue-500" placeholder="0" />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-bold text-gray-900 mb-2">Biaya Total (Rp)</label>
-                                <input type="number" className="w-full p-3 bg-white border border-gray-200 rounded-lg text-sm outline-none focus:border-blue-500" placeholder="Masukkan biaya" />
-                            </div>
-                        </div>
-                    )}
-                </div>
+    useEffect(() => {
+        loadData();
+    }, [loadData]);
 
-                <div className="flex justify-end gap-3 mt-8">
-                    <button onClick={onClose} className="px-6 py-2.5 font-bold text-sm text-gray-600">BATAL</button>
-                    <button className="px-6 py-2.5 font-bold text-sm bg-[#1D5ABF] text-white rounded-lg">Validasi</button>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-export const ValidasiOutbound = () => {
-    const [showModal, setShowModal] = useState(false);
-    const [showDetail, setShowDetail] = useState(false);
-    const [activeTab, setActiveTab] = useState("Siap Keluar");
-    const [searchQuery, setSearchQuery] = useState("");
-
-    const dataDummy = [
-        { id: 1, nama: "Ayam", resi: "002" },
-        { id: 2, nama: "Elektronik", resi: "119" }
+    const summary = [
+        { label: "AGING (H-3)", count: agingItems.length, icon: <Clock className="text-orange-400" size={20} />, color: "border-orange-100" },
+        { label: "OVERDUE", count: overdueItems.length, icon: <AlertTriangle className="text-red-400" size={20} />, color: "border-red-100" },
     ];
 
-    const filteredData = dataDummy.filter((item) => 
-        item.nama.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        item.resi.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    // Overdue items also satisfy the aging-window query on the backend in
+    // some edge cases, so de-dupe by id_barang when combining for "All Stock".
+    const allStock = useMemo(() => {
+        const overdueIds = new Set(overdueItems.map((i) => i.id_barang));
+        const combined = [
+            ...overdueItems.map((i) => ({ ...i, _statusLabel: "Overdue" })),
+            ...agingItems.filter((i) => !overdueIds.has(i.id_barang)).map((i) => ({ ...i, _statusLabel: "Aging" })),
+        ];
+        return combined;
+    }, [agingItems, overdueItems]);
+
+    const dataStok = useMemo(() => {
+        let rows;
+        if (activeTab === "Aging") rows = agingItems.map((i) => ({ ...i, _statusLabel: "Aging" }));
+        else if (activeTab === "Overdue") rows = overdueItems.map((i) => ({ ...i, _statusLabel: "Overdue" }));
+        else rows = allStock;
+
+        if (!search) return rows;
+        const q = search.toLowerCase();
+        return rows.filter(
+            (b) =>
+                b.label_barang?.toLowerCase().includes(q) ||
+                b.no_resi?.toLowerCase().includes(q) ||
+                b.nama_zona?.toLowerCase().includes(q),
+        );
+    }, [activeTab, agingItems, overdueItems, allStock, search]);
+
+    const statusBadge = (label) =>
+        label === "Overdue"
+            ? "bg-red-50 text-red-600 border-red-100"
+            : "bg-orange-50 text-orange-500 border-orange-100";
 
     return (
-        <div className="flex flex-row h-screen w-full overflow-hidden bg-[#F8F9FA]">
-            <Sidebar />
-            <div className="flex-1 h-screen overflow-y-auto p-10">
-                <div className="max-w-7xl mx-auto">
-                    {/* Header & Breadcrumb */}
-                    <header className="mb-8">
-                        <nav className="text-[11px] text-gray-400 mb-2 flex gap-1 items-center font-medium">
-                            <span>Outbound</span> <span>&gt;</span> <span className="text-gray-400">Validasi Outbound</span>
-                        </nav>
-                        <h1 className="text-2xl font-bold text-gray-900 mb-1">Validasi Outbound</h1>
-                        <p className="text-sm text-slate-500">Pilih barang yang siap keluar dan validasi pengambilannya.</p>
-                    </header>
+        <div className="flex flex-row min-h-screen bg-white">
+            <Sidebar className="flex-none" />
 
-                    {/* Filter Tab & Search */}
-                    <div className="flex items-center gap-6 mb-6">
-                        <div className="flex gap-2">
-                            {["Siap Keluar", "Riwayat"].map((tab) => (
-                                <button 
+            <div className="flex-1 p-10 bg-white">
+                {/* Header */}
+                <header className="mb-8">
+                    <h1 className="text-2xl font-bold text-gray-900 mb-1">Monitoring Aging Stock</h1>
+                    <p className="text-sm text-blue-400">Pantau barang yang sudah melewati batas keluar barang</p>
+                </header>
+
+                {/* Summary Cards Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+                    {summary.map((item, idx) => (
+                        <div key={idx} className={`p-6 rounded-xl border ${item.color} flex items-center gap-4 bg-white shadow-sm`}>
+                            <div className="bg-orange-50/50 p-3 rounded-lg">
+                                {item.icon}
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-bold text-blue-500 uppercase tracking-wider">{item.label}</p>
+                                <p className="text-2xl font-bold text-gray-900">{item.count}</p>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                {/* Table Container dengan Tab dan Search */}
+                <div className="rounded-2xl border border-gray-100 shadow-sm overflow-hidden bg-white">
+                    <div className="p-4 border-b border-gray-50 flex flex-col gap-4">
+                        {/* Tab Switcher sesuai referensi visual */}
+                        <div className="flex gap-6">
+                            {["All Stock", "Aging", "Overdue"].map((tab) => (
+                                <button
                                     key={tab}
                                     onClick={() => setActiveTab(tab)}
-                                    className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all border ${
-                                        activeTab === tab 
-                                            ? "bg-white border-gray-200 text-gray-900 shadow-sm" 
-                                            : "border-transparent text-gray-400 hover:text-gray-600"
-                                    }`}
+                                    className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${activeTab === tab
+                                        ? (tab === "Aging" ? "bg-orange-100 text-orange-600" : tab === "Overdue" ? "bg-red-100 text-red-600" : "bg-blue-100 text-blue-600")
+                                        : "text-gray-400 hover:bg-gray-50"
+                                        }`}
                                 >
-                                    {tab} Outbound <span className="bg-gray-100 px-2 py-0.5 rounded text-[10px]">7</span>
+                                    {tab}
                                 </button>
                             ))}
                         </div>
-                        
-                        <div className="relative flex-1 max-w-sm ml-auto">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                            <input 
-                                type="text" 
-                                placeholder="Cari resi, nama barang, gudang induk..." 
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full py-2 pl-10 pr-4 bg-white border border-gray-200 rounded-lg text-sm outline-none focus:border-blue-500" 
+
+                        {/* Search Bar */}
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+                            <input
+                                type="text"
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                placeholder="Cari barang, resi, atau zona..."
+                                className="w-full bg-white border border-gray-100 rounded-lg py-2 pl-10 pr-4 text-[11px] outline-none focus:ring-1 focus:ring-blue-500/20"
                             />
                         </div>
                     </div>
 
-                    {/* Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-20">
-                        {filteredData.length > 0 ? (
-                            filteredData.map((item) => (
-                                <div key={item.id} className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex flex-col gap-4">
-                                    <div>
-                                        <h3 className="font-bold text-lg text-gray-800">{item.nama}</h3>
-                                        <p className="text-xs text-gray-400">{item.resi}</p>
-                                    </div>
-                                    {/* Rute kembali ditambahkan */}
-                                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                                        <MapPin size={16} className="text-gray-400" />
-                                        <span>Jakarta → Surabaya</span>
-                                    </div>
-                                    <button onClick={() => setShowModal(true)} className="w-full flex items-center justify-center gap-2 bg-[#1D5ABF] text-white py-2.5 rounded-lg font-semibold text-sm transition-all">
-                                        <CheckCircle2 size={18} /> Outbond Validation
-                                    </button>
-                                </div>
-                            ))
-                        ) : (
-                            <p className="text-gray-400 text-sm italic">Data tidak ditemukan.</p>
-                        )}
-                    </div>
+                    {/* Content Table */}
+                    <table className="w-full text-left">
+                        <thead>
+                            <tr className="text-[12px] text-gray-500 bg-gray-50/50 border-b border-gray-50">
+                                <th className="px-8 py-4 font-medium">Resi</th>
+                                <th className="px-6 py-4 font-medium text-center">Nama Barang</th>
+                                <th className="px-6 py-4 font-medium text-center">Zona</th>
+                                <th className="px-6 py-4 font-medium text-center">Jumlah Koli</th>
+                                <th className="px-6 py-4 font-medium text-center">Estimasi Tgl Keluar</th>
+                                <th className="px-8 py-4 font-medium text-center">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody className="text-[13px]">
+                            {isLoading ? (
+                                <tr>
+                                    <td colSpan="6" className="px-6 py-24 text-center text-gray-400">Memuat data...</td>
+                                </tr>
+                            ) : dataStok.length > 0 ? (
+                                dataStok.map((item) => (
+                                    <tr key={item.id_barang} className="border-t border-gray-50">
+                                        <td className="px-8 py-4 font-bold text-gray-900">{item.no_resi}</td>
+                                        <td className="px-6 py-4 text-center text-gray-600">{item.label_barang}</td>
+                                        <td className="px-6 py-4 text-center text-gray-500">{item.nama_zona || "-"}</td>
+                                        <td className="px-6 py-4 text-center text-gray-600">{item.jumlah_koli}</td>
+                                        <td className="px-6 py-4 text-center text-gray-500">{formatDate(item.estimasi_tgl_keluar)}</td>
+                                        <td className="px-8 py-4 text-center">
+                                            <span className={`px-3 py-1 rounded text-[11px] font-medium border ${statusBadge(item._statusLabel)}`}>
+                                                {item._statusLabel}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan="6" className="px-6 py-24 text-center">
+                                        <p className="text-gray-400 italic text-sm">Tidak ada data untuk kategori {activeTab}.</p>
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
                 </div>
             </div>
-
-            {showModal && <ValidationModal onClose={() => setShowModal(false)} onOpenDetail={() => setShowDetail(true)} />}
-            <ModalDetailBarang isOpen={showDetail} onClose={() => setShowDetail(false)} />
         </div>
     );
 };

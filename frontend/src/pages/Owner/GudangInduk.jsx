@@ -147,8 +147,8 @@ export const GudangInduk = () => {
     }, [loadData]);
 
     return (
-        <div className="flex flex-row h-screen w-full overflow-hidden bg-[#F8F9FA]">
-            <Sidebar />
+        <div className="flex flex-row min-h-screen bg-white">
+            <Sidebar className="flex-none" />
 
             <div className="flex-1 p-10 bg-white">
                 <header className="flex justify-between items-start mb-8">
