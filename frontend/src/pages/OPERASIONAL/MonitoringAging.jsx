@@ -3,6 +3,9 @@ import { Sidebar } from "../../components/Sidebar";
 import { Search, Clock, AlertTriangle } from "lucide-react";
 import { inventoryApi } from "../../api/inventoryApi";
 import { useToast } from "../../context/ToastContext";
+import Pagination, { paginate } from "../../components/common/Pagination";
+
+const PER_PAGE = 10;
 
 const formatDate = (value) =>
     value ? new Date(value).toLocaleDateString("id-ID", { day: "numeric", month: "numeric", year: "numeric" }) : "-";
@@ -14,6 +17,7 @@ export const MonitoringAging = () => {
     const [agingItems, setAgingItems] = useState([]);
     const [overdueItems, setOverdueItems] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [page, setPage] = useState(1);
 
     const loadData = useCallback(async () => {
         setIsLoading(true);
@@ -49,6 +53,10 @@ export const MonitoringAging = () => {
         return combined;
     }, [agingItems, overdueItems]);
 
+    useEffect(() => {
+        setPage(1);
+    }, [activeTab, search]);
+
     const dataStok = useMemo(() => {
         let rows;
         if (activeTab === "Aging") rows = agingItems.map((i) => ({ ...i, _statusLabel: "Aging" }));
@@ -64,6 +72,9 @@ export const MonitoringAging = () => {
                 b.nama_zona?.toLowerCase().includes(q),
         );
     }, [activeTab, agingItems, overdueItems, allStock, search]);
+
+    const totalPages = Math.max(1, Math.ceil(dataStok.length / PER_PAGE));
+    const pageItems = useMemo(() => paginate(dataStok, page, PER_PAGE), [dataStok, page]);
 
     const statusBadge = (label) =>
         label === "Overdue"
@@ -146,8 +157,8 @@ export const MonitoringAging = () => {
                                 <tr>
                                     <td colSpan="6" className="px-6 py-24 text-center text-gray-400">Memuat data...</td>
                                 </tr>
-                            ) : dataStok.length > 0 ? (
-                                dataStok.map((item) => (
+                            ) : pageItems.length > 0 ? (
+                                pageItems.map((item) => (
                                     <tr key={item.id_barang} className="border-t border-gray-50">
                                         <td className="px-8 py-4 font-bold text-gray-900">{item.no_resi}</td>
                                         <td className="px-6 py-4 text-center text-gray-600">{item.label_barang}</td>
@@ -170,6 +181,13 @@ export const MonitoringAging = () => {
                             )}
                         </tbody>
                     </table>
+                    <Pagination
+                        currentPage={page}
+                        totalPages={totalPages}
+                        totalItems={dataStok.length}
+                        perPage={PER_PAGE}
+                        onPageChange={setPage}
+                    />
                 </div>
             </div>
         </div>

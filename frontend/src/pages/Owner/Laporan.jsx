@@ -1,8 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Sidebar } from "../../components/Sidebar";
 import { Download, TrendingUp, Package } from "lucide-react";
 import { reportApi } from "../../api/reportApi";
 import { useToast } from "../../context/ToastContext";
+import Pagination, { paginate } from "../../components/common/Pagination";
+
+const PER_PAGE = 10;
 
 const formatRupiah = (value) =>
     new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(value || 0);
@@ -32,6 +35,17 @@ export const Laporan = () => {
     const [financial, setFinancial] = useState([]);
     const [logistic, setLogistic] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [page, setPage] = useState(1);
+
+    useEffect(() => {
+        setPage(1);
+    }, [activeTab]);
+
+    const financialTotalPages = Math.max(1, Math.ceil(financial.length / PER_PAGE));
+    const financialPageItems = useMemo(() => paginate(financial, page, PER_PAGE), [financial, page]);
+
+    const logisticTotalPages = Math.max(1, Math.ceil(logistic.length / PER_PAGE));
+    const logisticPageItems = useMemo(() => paginate(logistic, page, PER_PAGE), [logistic, page]);
 
     const loadData = useCallback(async () => {
         setIsLoading(true);
@@ -142,61 +156,79 @@ export const Laporan = () => {
 
                 <div className="rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                     {activeTab === "pendapatan" ? (
-                        <table className="w-full text-left border-collapse">
-                            <thead>
-                                <tr className="text-[13px] text-gray-500 border-b border-gray-50">
-                                    <th className="px-8 py-5 font-medium">Tanggal</th>
-                                    <th className="px-6 py-5 font-medium">Barang</th>
-                                    <th className="px-6 py-5 font-medium text-center">Berat</th>
-                                    <th className="px-6 py-5 font-medium text-center">Biaya Tambahan</th>
-                                    <th className="px-6 py-5 font-medium text-center">Total</th>
-                                </tr>
-                            </thead>
-                            <tbody className="text-[14px]">
-                                {isLoading ? (
-                                    <tr><td colSpan="5" className="px-6 py-20 text-center text-gray-400">Memuat data...</td></tr>
-                                ) : financial.length > 0 ? (
-                                    financial.map((row, idx) => (
-                                        <tr key={idx} className="border-t border-gray-50">
-                                            <td className="px-8 py-4 text-gray-500">{formatDate(row.tgl_keluar)}</td>
-                                            <td className="px-6 py-4 font-semibold text-gray-800">{row.label_barang}</td>
-                                            <td className="px-6 py-4 text-center text-gray-600">{row.berat_barang} kg</td>
-                                            <td className="px-6 py-4 text-center text-gray-600">{formatRupiah(row.biaya_ekstra)}</td>
-                                            <td className="px-6 py-4 text-center font-bold text-gray-800">{formatRupiah(row.total_biaya)}</td>
-                                        </tr>
-                                    ))
-                                ) : (
-                                    <tr><td colSpan="5" className="px-6 py-20 text-center text-gray-400 italic">Tidak ada data pendapatan.</td></tr>
-                                )}
-                            </tbody>
-                        </table>
+                        <>
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="text-[13px] text-gray-500 border-b border-gray-50">
+                                        <th className="px-8 py-5 font-medium">Tanggal</th>
+                                        <th className="px-6 py-5 font-medium">Barang</th>
+                                        <th className="px-6 py-5 font-medium text-center">Berat</th>
+                                        <th className="px-6 py-5 font-medium text-center">Biaya Tambahan</th>
+                                        <th className="px-6 py-5 font-medium text-center">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="text-[14px]">
+                                    {isLoading ? (
+                                        <tr><td colSpan="5" className="px-6 py-20 text-center text-gray-400">Memuat data...</td></tr>
+                                    ) : financialPageItems.length > 0 ? (
+                                        financialPageItems.map((row, idx) => (
+                                            <tr key={idx} className="border-t border-gray-50">
+                                                <td className="px-8 py-4 text-gray-500">{formatDate(row.tgl_keluar)}</td>
+                                                <td className="px-6 py-4 font-semibold text-gray-800">{row.label_barang}</td>
+                                                <td className="px-6 py-4 text-center text-gray-600">{row.berat_barang} kg</td>
+                                                <td className="px-6 py-4 text-center text-gray-600">{formatRupiah(row.biaya_ekstra)}</td>
+                                                <td className="px-6 py-4 text-center font-bold text-gray-800">{formatRupiah(row.total_biaya)}</td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr><td colSpan="5" className="px-6 py-20 text-center text-gray-400 italic">Tidak ada data pendapatan.</td></tr>
+                                    )}
+                                </tbody>
+                            </table>
+                            <Pagination
+                                currentPage={page}
+                                totalPages={financialTotalPages}
+                                totalItems={financial.length}
+                                perPage={PER_PAGE}
+                                onPageChange={setPage}
+                            />
+                        </>
                     ) : (
-                        <table className="w-full text-left border-collapse">
-                            <thead>
-                                <tr className="text-[13px] text-gray-500 border-b border-gray-50">
-                                    <th className="px-8 py-5 font-medium">Tanggal</th>
-                                    <th className="px-6 py-5 font-medium">Aksi</th>
-                                    <th className="px-6 py-5 font-medium">Barang</th>
-                                    <th className="px-6 py-5 font-medium">Keterangan</th>
-                                </tr>
-                            </thead>
-                            <tbody className="text-[14px]">
-                                {isLoading ? (
-                                    <tr><td colSpan="4" className="px-6 py-20 text-center text-gray-400">Memuat data...</td></tr>
-                                ) : logistic.length > 0 ? (
-                                    logistic.map((row, idx) => (
-                                        <tr key={idx} className="border-t border-gray-50">
-                                            <td className="px-8 py-4 text-gray-500">{formatDate(row.tanggal)}</td>
-                                            <td className="px-6 py-4 font-bold text-gray-800">{row.aksi}</td>
-                                            <td className="px-6 py-4 text-gray-600">{row.no_resi}</td>
-                                            <td className="px-6 py-4 text-gray-500">{row.keterangan}</td>
+                        <>
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="text-[13px] text-gray-500 border-b border-gray-50">
+                                        <th className="px-8 py-5 font-medium">Tanggal</th>
+                                        <th className="px-6 py-5 font-medium">Aksi</th>
+                                        <th className="px-6 py-5 font-medium">Barang</th>
+                                        <th className="px-6 py-5 font-medium">Keterangan</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="text-[14px]">
+                                    {isLoading ? (
+                                        <tr><td colSpan="4" className="px-6 py-20 text-center text-gray-400">Memuat data...</td></tr>
+                                    ) : logisticPageItems.length > 0 ? (
+                                        logisticPageItems.map((row, idx) => (
+                                            <tr key={idx} className="border-t border-gray-50">
+                                                <td className="px-8 py-4 text-gray-500">{formatDate(row.tanggal)}</td>
+                                                <td className="px-6 py-4 font-bold text-gray-800">{row.aksi}</td>
+                                                <td className="px-6 py-4 text-gray-600">{row.no_resi}</td>
+                                                <td className="px-6 py-4 text-gray-500">{row.keterangan}</td>
                                         </tr>
                                     ))
                                 ) : (
                                     <tr><td colSpan="4" className="px-6 py-20 text-center text-gray-400 italic">Tidak ada data logistik.</td></tr>
                                 )}
-                            </tbody>
-                        </table>
+                                </tbody>
+                            </table>
+                            <Pagination
+                                currentPage={page}
+                                totalPages={logisticTotalPages}
+                                totalItems={logistic.length}
+                                perPage={PER_PAGE}
+                                onPageChange={setPage}
+                            />
+                        </>
                     )}
                 </div>
             </div>

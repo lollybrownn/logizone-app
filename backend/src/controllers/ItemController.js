@@ -133,11 +133,18 @@ const ItemController = {
         return res.status(422).json({ success: false, message: "Kolom estimasi tanggal keluar wajib diisi" });
       }
 
-      // VR-05: nomor telepon wajib diisi
+      // VR-05: nomor telepon wajib diisi dan hanya boleh berisi angka
       if (!no_telp_pengirim || !no_telp_penerima) {
         return res.status(422).json({
           success: false,
           message: "Nomor telepon pengirim dan penerima wajib diisi",
+        });
+      }
+      const phonePattern = /^[0-9]+$/;
+      if (!phonePattern.test(no_telp_pengirim) || !phonePattern.test(no_telp_penerima)) {
+        return res.status(422).json({
+          success: false,
+          message: "Nomor telepon hanya boleh berisi angka",
         });
       }
 
@@ -154,13 +161,21 @@ const ItemController = {
         return res.status(422).json({ success: false, message: "Biaya tidak boleh bernilai negatif" });
       }
 
-      // VR-08: estimasi tanggal keluar harus > tanggal masuk
+      // VR-08: estimasi tanggal keluar harus > tanggal masuk DAN > tanggal hari ini
       const masuk = tgl_masuk ? new Date(tgl_masuk) : new Date();
       const keluar = new Date(estimasi_tgl_keluar);
+      const now = new Date();
+
       if (keluar <= masuk) {
         return res.status(422).json({
           success: false,
           message: "Estimasi tanggal keluar harus lebih besar dari tanggal barang masuk",
+        });
+      }
+      if (keluar <= now) {
+        return res.status(422).json({
+          success: false,
+          message: "Estimasi tanggal keluar harus lebih besar dari tanggal hari ini",
         });
       }
 
@@ -262,14 +277,32 @@ const ItemController = {
   // DELETE /api/barang/:id
   // ---------------------------------------------------------------------
   async deleteBarang(req, res) {
+    const db = require("../config/database");
+    const client = await db.connect();
     try {
-      const deleted = await ItemModel.delete(req.params.id);
-      if (!deleted) {
+      await client.query("BEGIN");
+
+      const barang = await ItemModel.findById(req.params.id, client);
+      if (!barang) {
+        await client.query("ROLLBACK");
         return res.status(404).json({ success: false, message: "Barang tidak ditemukan" });
       }
+
+      // Free up the zone capacity this item was occupying before deleting it,
+      // otherwise kapasitas_terisi stays permanently inflated.
+      if (barang.id_zona && barang.status !== "Completed") {
+        await ZoneModel.adjustCapacity(barang.id_zona, -barang.jumlah_koli, client);
+      }
+
+      await client.query("DELETE FROM barang WHERE id_barang = $1", [req.params.id]);
+
+      await client.query("COMMIT");
       return res.status(200).json({ success: true, message: "Barang berhasil dihapus" });
     } catch (error) {
+      await client.query("ROLLBACK");
       return res.status(500).json({ success: false, message: error.message });
+    } finally {
+      client.release();
     }
   },
 

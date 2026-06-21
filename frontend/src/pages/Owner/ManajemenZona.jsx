@@ -1,9 +1,12 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Sidebar } from "../../components/Sidebar";
 import { Plus, X } from "lucide-react";
 import { useZones } from "../../context/ZoneContext";
 import { useToast } from "../../context/ToastContext";
 import { zoneApi } from "../../api/zoneApi";
+import Pagination, { paginate } from "../../components/common/Pagination";
+
+const PER_PAGE = 10;
 
 const EMPTY_FORM = { kodeZona: "", namaZona: "", kapasitas: "", deskripsi: "" };
 
@@ -130,6 +133,9 @@ function ZonaModal({ zone, onClose, onSaved }) {
 export const ManajemenZona = () => {
     const { zones, refresh } = useZones();
     const [modalState, setModalState] = useState(null); // null | 'new' | zone object
+    const [page, setPage] = useState(1);
+    const totalPages = Math.max(1, Math.ceil(zones.length / PER_PAGE));
+    const pageItems = useMemo(() => paginate(zones, page, PER_PAGE), [zones, page]);
 
     return (
         <div className="flex flex-row min-h-screen bg-white">
@@ -162,8 +168,8 @@ export const ManajemenZona = () => {
                             </tr>
                         </thead>
                         <tbody className="text-[14px]">
-                            {zones.length > 0 ? (
-                                zones.map((zone) => (
+                            {pageItems.length > 0 ? (
+                                pageItems.map((zone) => (
                                     <tr key={zone.id} className="border-t border-gray-50 hover:bg-gray-50/50">
                                         <td className="px-8 py-5 font-bold text-blue-600">{zone.kode_zona}</td>
                                         <td className="px-6 py-5 text-gray-700">{zone.nama_zona}</td>
@@ -186,6 +192,13 @@ export const ManajemenZona = () => {
                             )}
                         </tbody>
                     </table>
+                    <Pagination
+                        currentPage={page}
+                        totalPages={totalPages}
+                        totalItems={zones.length}
+                        perPage={PER_PAGE}
+                        onPageChange={setPage}
+                    />
                 </div>
 
                 {modalState && (

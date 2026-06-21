@@ -1,6 +1,9 @@
 const db = require("../config/database");
 
 const ItemModel = {
+  // -------------------------------------------------------------------------
+  // READ
+  // -------------------------------------------------------------------------
 
   async findAll({
     search,
@@ -182,6 +185,10 @@ const ItemModel = {
     return result.rows[0] || null;
   },
 
+  // -------------------------------------------------------------------------
+  // CREATE  (FR-01: Pendataan Barang Masuk)
+  // -------------------------------------------------------------------------
+
   async create({
     no_resi,
     label_barang,
@@ -232,6 +239,9 @@ const ItemModel = {
     return result.rows[0];
   },
 
+  // -------------------------------------------------------------------------
+  // UPDATE
+  // -------------------------------------------------------------------------
 
   async update(id_barang, fields, connection = db) {
     const allowed = [
@@ -287,6 +297,10 @@ const ItemModel = {
     return result.rows[0] || null;
   },
 
+  // -------------------------------------------------------------------------
+  // ASSIGN ZONA  (FR-01 step 2 / FR-07 placement)
+  // -------------------------------------------------------------------------
+
   async assignZone(id_barang, id_zona, connection = db) {
     const sql = `
       UPDATE barang
@@ -297,6 +311,10 @@ const ItemModel = {
     const result = await connection.query(sql, [id_zona, id_barang]);
     return result.rows[0];
   },
+
+  // -------------------------------------------------------------------------
+  // DELETE
+  // -------------------------------------------------------------------------
 
   async delete(id_barang) {
     const sql = "DELETE FROM barang WHERE id_barang = $1";

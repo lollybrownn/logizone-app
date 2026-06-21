@@ -1,8 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Sidebar } from "../../components/Sidebar";
 import { Plus, X } from "lucide-react";
 import { userApi } from "../../api/userApi";
 import { useToast } from "../../context/ToastContext";
+import Pagination, { paginate } from "../../components/common/Pagination";
+
+const PER_PAGE = 10;
 
 const ROLES = ["Owner", "Staff Operasional", "Staff Gudang"];
 
@@ -139,6 +142,9 @@ export const ManajemenAkun = () => {
     const [users, setUsers] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [modalState, setModalState] = useState(null);
+    const [page, setPage] = useState(1);
+    const totalPages = Math.max(1, Math.ceil(users.length / PER_PAGE));
+    const pageItems = useMemo(() => paginate(users, page, PER_PAGE), [users, page]);
 
     const loadData = useCallback(async () => {
         setIsLoading(true);
@@ -188,8 +194,8 @@ export const ManajemenAkun = () => {
                         <tbody className="text-[14px]">
                             {isLoading ? (
                                 <tr><td colSpan="4" className="px-6 py-20 text-center text-gray-400">Memuat data...</td></tr>
-                            ) : users.length > 0 ? (
-                                users.map((u) => (
+                            ) : pageItems.length > 0 ? (
+                                pageItems.map((u) => (
                                     <tr key={u.id} className="border-t border-gray-50 hover:bg-gray-50/50">
                                         <td className="px-8 py-5 font-bold text-gray-800">{u.username}</td>
                                         <td className="px-6 py-5">
@@ -214,6 +220,13 @@ export const ManajemenAkun = () => {
                             )}
                         </tbody>
                     </table>
+                    <Pagination
+                        currentPage={page}
+                        totalPages={totalPages}
+                        totalItems={users.length}
+                        perPage={PER_PAGE}
+                        onPageChange={setPage}
+                    />
                 </div>
 
                 {modalState && (

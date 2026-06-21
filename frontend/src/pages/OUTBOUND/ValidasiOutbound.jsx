@@ -3,6 +3,7 @@ import { Sidebar } from "../../components/Sidebar";
 import { Search, MapPin, CheckCircle2, X } from "lucide-react";
 import { outboundApi } from "../../api/outboundApi";
 import { useToast } from "../../context/ToastContext";
+import { useZones } from "../../context/ZoneContext";
 
 const formatDate = (value) =>
     value ? new Date(value).toLocaleString("id-ID", { day: "numeric", month: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "-";
@@ -128,6 +129,7 @@ function ValidateModal({ item, onClose, onValidated }) {
 
 export const ValidasiOutbound = () => {
     const toast = useToast();
+    const { refresh: refreshZones } = useZones();
     const [activeTab, setActiveTab] = useState("siap"); // 'siap' | 'riwayat'
     const [search, setSearch] = useState("");
     const [readyItems, setReadyItems] = useState([]);
@@ -273,6 +275,7 @@ export const ValidasiOutbound = () => {
                         onValidated={() => {
                             setSelectedItem(null);
                             loadData();
+                            refreshZones();
                         }}
                     />
                 )}

@@ -1,8 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Sidebar } from "../../components/Sidebar";
 import { Plus, X } from "lucide-react";
 import { warehouseApi } from "../../api/warehouseApi";
 import { useToast } from "../../context/ToastContext";
+import Pagination, { paginate } from "../../components/common/Pagination";
+
+const PER_PAGE = 10;
 
 const EMPTY_FORM = { name: "", code: "", contact: "", address: "" };
 
@@ -128,6 +131,9 @@ export const GudangInduk = () => {
     const [warehouses, setWarehouses] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [modalState, setModalState] = useState(null);
+    const [page, setPage] = useState(1);
+    const totalPages = Math.max(1, Math.ceil(warehouses.length / PER_PAGE));
+    const pageItems = useMemo(() => paginate(warehouses, page, PER_PAGE), [warehouses, page]);
 
     const loadData = useCallback(async () => {
         setIsLoading(true);
@@ -179,8 +185,8 @@ export const GudangInduk = () => {
                         <tbody className="text-[14px]">
                             {isLoading ? (
                                 <tr><td colSpan="5" className="px-6 py-20 text-center text-gray-400">Memuat data...</td></tr>
-                            ) : warehouses.length > 0 ? (
-                                warehouses.map((w) => (
+                            ) : pageItems.length > 0 ? (
+                                pageItems.map((w) => (
                                     <tr key={w.id} className="border-t border-gray-50 hover:bg-gray-50/50">
                                         <td className="px-8 py-5 font-bold text-gray-800">{w.nama}</td>
                                         <td className="px-6 py-5 text-gray-500">{w.kode}</td>
@@ -204,6 +210,13 @@ export const GudangInduk = () => {
                             )}
                         </tbody>
                     </table>
+                    <Pagination
+                        currentPage={page}
+                        totalPages={totalPages}
+                        totalItems={warehouses.length}
+                        perPage={PER_PAGE}
+                        onPageChange={setPage}
+                    />
                 </div>
 
                 {modalState && (

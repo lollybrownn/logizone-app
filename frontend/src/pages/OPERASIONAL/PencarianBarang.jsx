@@ -1,20 +1,23 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Sidebar } from "../../components/Sidebar";
 import { Search } from "lucide-react";
 import { barangApi } from "../../api/barangApi";
 import { useToast } from "../../context/ToastContext";
+import Pagination, { paginate } from "../../components/common/Pagination";
+
+const PER_PAGE = 10;
 
 const formatDate = (value) =>
     value ? new Date(value).toLocaleDateString("id-ID", { day: "numeric", month: "numeric", year: "numeric" }) : "-";
 
 const getStatusStyle = (status) => {
     switch (status) {
-        case "Completed": return "bg-emerald-50 text-emerald-600 border-emerald-100";
-        case "Stored": return "bg-blue-50 text-blue-600 border-blue-100";
-        case "Picked Up": return "bg-cyan-50 text-cyan-600 border-cyan-100";
-        case "Pending": return "bg-orange-50 text-orange-500 border-orange-100";
-        case "Registered": return "bg-purple-50 text-purple-500 border-purple-100";
-        default: return "bg-gray-50 text-gray-500 border-gray-100";
+        case "Completed": return "bg-emerald-50 text-emerald-800 border-emerald-200 font-bold";
+        case "Stored": return "bg-blue-50 text-blue-800 border-blue-200 font-bold";
+        case "Picked Up": return "bg-cyan-50 text-cyan-800 border-cyan-200 font-bold";
+        case "Pending": return "bg-orange-50 text-orange-800 border-orange-200 font-bold";
+        case "Registered": return "bg-purple-50 text-purple-800 border-purple-200 font-bold";
+        default: return "bg-gray-100 text-gray-900 border-gray-300 font-bold";
     }
 };
 
@@ -24,6 +27,10 @@ export const PencarianBarang = () => {
     const [hasilPencarian, setHasilPencarian] = useState([]);
     const [hasSearched, setHasSearched] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [page, setPage] = useState(1);
+
+    const totalPages = Math.max(1, Math.ceil(hasilPencarian.length / PER_PAGE));
+    const pageItems = useMemo(() => paginate(hasilPencarian, page, PER_PAGE), [hasilPencarian, page]);
 
     async function handleSearch(e) {
         e.preventDefault();
@@ -33,9 +40,10 @@ export const PencarianBarang = () => {
         }
         setIsLoading(true);
         try {
-            const res = await barangApi.list({ search: keyword.trim(), per_page: 50 });
+            const res = await barangApi.list({ search: keyword.trim(), per_page: 100 });
             setHasilPencarian(res.data.barang || []);
             setHasSearched(true);
+            setPage(1);
         } catch (err) {
             toast.error(err.message || "Gagal melakukan pencarian");
         } finally {
@@ -98,8 +106,8 @@ export const PencarianBarang = () => {
                             </tr>
                         </thead>
                         <tbody className="text-[14px]">
-                            {hasilPencarian.length > 0 ? (
-                                hasilPencarian.map((item) => (
+                            {pageItems.length > 0 ? (
+                                pageItems.map((item) => (
                                     <tr key={item.id_barang} className="border-t border-gray-50 hover:bg-gray-50/50 transition-colors">
                                         <td className="px-8 py-5 font-bold text-gray-900">{item.no_resi}</td>
                                         <td className="px-6 py-5 text-center text-gray-600">{item.label_barang}</td>
@@ -128,6 +136,13 @@ export const PencarianBarang = () => {
                             )}
                         </tbody>
                     </table>
+                    <Pagination
+                        currentPage={page}
+                        totalPages={totalPages}
+                        totalItems={hasilPencarian.length}
+                        perPage={PER_PAGE}
+                        onPageChange={setPage}
+                    />
                 </div>
             </div>
         </div>

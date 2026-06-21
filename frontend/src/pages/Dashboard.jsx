@@ -85,7 +85,10 @@ export const Dashboard = () => {
             { title: "Total Barang", value: summary.totalItems, subtitle: `${summary.totalStoredItems} tersimpan di zona`, icon: <Box size={20} className="text-cyan-500" />, iconBgColor: "bg-cyan-50" },
             { title: "Pending", value: summary.totalPendingItems, subtitle: "Menunggu pendataan lokasi", icon: <FileText size={20} className="text-blue-600" />, iconBgColor: "bg-blue-50" },
             { title: "Utilisasi Zona", value: `${summary.zoneUtilization.percentage}%`, subtitle: `${summary.zoneUtilization.totalFilled}/${summary.zoneUtilization.totalCapacity} koli terisi`, icon: <MapPin size={20} className="text-orange-400" />, iconBgColor: "bg-orange-50" },
-            { title: "Pendapatan 30 Hari", value: formatRupiah(summary.totalIncomeLast30Days), subtitle: "Dari transaksi outbound", icon: <Truck size={20} className="text-green-500" />, iconBgColor: "bg-green-50" },
+            // Revenue is Owner-only financial data; hidden for Ops/Gudang roles
+            ...(role === "Owner"
+                ? [{ title: "Pendapatan 30 Hari", value: formatRupiah(summary.totalIncomeLast30Days), subtitle: "Dari transaksi outbound", icon: <Truck size={20} className="text-green-500" />, iconBgColor: "bg-green-50" }]
+                : []),
             { title: "Aging / Overdue", value: summary.totalAging + summary.totalOverdue, subtitle: `${summary.totalAging} aging, ${summary.totalOverdue} overdue`, icon: <AlertTriangle size={20} className="text-orange-500" />, iconBgColor: "bg-orange-100/50" },
             { title: "Aktivitas", value: activityLog.length, subtitle: "Log terbaru", icon: <Activity size={20} className="text-indigo-500" />, iconBgColor: "bg-indigo-50" },
         ]

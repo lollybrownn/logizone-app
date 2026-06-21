@@ -20,12 +20,21 @@ const EMPTY_FORM = {
     biaya: "",
 };
 
+// Estimasi tanggal keluar must be strictly after today (VR-08), so the
+// date picker's earliest selectable day is tomorrow.
+function getTomorrowDateString() {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow.toISOString().slice(0, 10);
+}
+
 export const ModalTambahBarang = ({ isOpen, onClose, onCreated }) => {
     const toast = useToast();
     const [warehouses, setWarehouses] = useState([]);
     const [form, setForm] = useState(EMPTY_FORM);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState("");
+    const minEstimasiDate = getTomorrowDateString();
 
     useEffect(() => {
         if (!isOpen) return;
@@ -44,9 +53,30 @@ export const ModalTambahBarang = ({ isOpen, onClose, onCreated }) => {
         setForm((prev) => ({ ...prev, [field]: value }));
     }
 
+    function updatePhone(field, value) {
+        // Strip anything that isn't a digit as the user types
+        const digitsOnly = value.replace(/\D/g, "");
+        setForm((prev) => ({ ...prev, [field]: digitsOnly }));
+    }
+
     async function handleSubmit(e) {
         e.preventDefault();
         setError("");
+
+        const phonePattern = /^[0-9]+$/;
+        if (!phonePattern.test(form.no_telp_pengirim) || !phonePattern.test(form.no_telp_penerima)) {
+            setError("Nomor telepon hanya boleh berisi angka");
+            return;
+        }
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const keluar = new Date(form.estimasi_tgl_keluar);
+        if (!form.estimasi_tgl_keluar || keluar <= today) {
+            setError("Estimasi tanggal keluar harus lebih besar dari tanggal hari ini");
+            return;
+        }
+
         setIsSubmitting(true);
         try {
             await barangApi.create({
@@ -176,9 +206,9 @@ export const ModalTambahBarang = ({ isOpen, onClose, onCreated }) => {
                             </div>
                             <div className="grid grid-cols-2 gap-x-4 gap-y-4">
                                 <InputGroup label="Nama Pengirim" placeholder="Input nama pengirim" value={form.nama_pengirim} onChange={(e) => update("nama_pengirim", e.target.value)} required />
-                                <InputGroup label="No. Telepon Pengirim" placeholder="Input no. telp" value={form.no_telp_pengirim} onChange={(e) => update("no_telp_pengirim", e.target.value)} required />
+                                <InputGroup label="No. Telepon Pengirim" placeholder="Input no. telp" type="tel" inputMode="numeric" pattern="[0-9]*" value={form.no_telp_pengirim} onChange={(e) => updatePhone("no_telp_pengirim", e.target.value)} required />
                                 <InputGroup label="Nama Penerima" placeholder="Input nama penerima" value={form.nama_penerima} onChange={(e) => update("nama_penerima", e.target.value)} required />
-                                <InputGroup label="No. Telepon Penerima" placeholder="Input no. telp" value={form.no_telp_penerima} onChange={(e) => update("no_telp_penerima", e.target.value)} required />
+                                <InputGroup label="No. Telepon Penerima" placeholder="Input no. telp" type="tel" inputMode="numeric" pattern="[0-9]*" value={form.no_telp_penerima} onChange={(e) => updatePhone("no_telp_penerima", e.target.value)} required />
                             </div>
                         </section>
 
@@ -199,6 +229,7 @@ export const ModalTambahBarang = ({ isOpen, onClose, onCreated }) => {
                                 <InputGroup
                                     label="Estimasi Tanggal Keluar"
                                     type="date"
+                                    min={minEstimasiDate}
                                     value={form.estimasi_tgl_keluar}
                                     onChange={(e) => update("estimasi_tgl_keluar", e.target.value)}
                                     required
