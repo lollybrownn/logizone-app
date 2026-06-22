@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
 import { Sidebar } from "../../components/Sidebar";
-import { Plus, X } from "lucide-react";
+import { Plus, X, Trash2 } from "lucide-react";
 import { useZones } from "../../context/ZoneContext";
 import { useToast } from "../../context/ToastContext";
 import { zoneApi } from "../../api/zoneApi";
 import Pagination, { paginate } from "../../components/common/Pagination";
+import DeleteConfirmModal from "../../components/common/DeleteConfirmModal";
 
 const PER_PAGE = 10;
 
@@ -131,11 +132,36 @@ function ZonaModal({ zone, onClose, onSaved }) {
 }
 
 export const ManajemenZona = () => {
+    const toast = useToast();
     const { zones, refresh } = useZones();
     const [modalState, setModalState] = useState(null); // null | 'new' | zone object
+    const [deleteTarget, setDeleteTarget] = useState(null);
+    const [isDeleting, setIsDeleting] = useState(false);
     const [page, setPage] = useState(1);
     const totalPages = Math.max(1, Math.ceil(zones.length / PER_PAGE));
     const pageItems = useMemo(() => paginate(zones, page, PER_PAGE), [zones, page]);
+
+    async function handleDelete() {
+        if (!deleteTarget) return;
+        setIsDeleting(true);
+        try {
+            await zoneApi.remove(deleteTarget.id);
+            toast.success("Zona berhasil dihapus");
+            setDeleteTarget(null);
+            // If we deleted the last item on this page, step back a page
+            if (pageItems.length === 1 && page > 1) {
+                setPage(page - 1);
+            }
+            refresh();
+        } catch (err) {
+            // Backend returns 409 with a clear message when the zone still
+            // contains items — surface that exact message instead of crashing.
+            toast.error(err.message || "Gagal menghapus zona");
+            setDeleteTarget(null);
+        } finally {
+            setIsDeleting(false);
+        }
+    }
 
     return (
         <div className="flex flex-row min-h-screen bg-white">
@@ -177,9 +203,18 @@ export const ManajemenZona = () => {
                                         <td className="px-6 py-5 text-center text-gray-600">{zone.kapasitas}</td>
                                         <td className="px-6 py-5 text-center text-gray-600">{zone.kapasitas_terisi}/{zone.kapasitas}</td>
                                         <td className="px-6 py-5 text-center">
-                                            <button onClick={() => setModalState(zone)} className="text-blue-600 font-semibold hover:underline">
-                                                Edit
-                                            </button>
+                                            <div className="flex items-center justify-center gap-3">
+                                                <button onClick={() => setModalState(zone)} className="text-blue-600 font-semibold hover:underline">
+                                                    Edit
+                                                </button>
+                                                <button
+                                                    onClick={() => setDeleteTarget(zone)}
+                                                    className="text-red-500 hover:text-red-700"
+                                                    aria-label={`Hapus zona ${zone.kode_zona}`}
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))
@@ -211,6 +246,19 @@ export const ManajemenZona = () => {
                         }}
                     />
                 )}
+
+                <DeleteConfirmModal
+                    isOpen={Boolean(deleteTarget)}
+                    title="Hapus Zona?"
+                    description={
+                        deleteTarget
+                            ? `Zona "${deleteTarget.kode_zona} - ${deleteTarget.nama_zona}" akan dihapus permanen. Zona yang masih berisi barang tidak dapat dihapus.`
+                            : ""
+                    }
+                    isDeleting={isDeleting}
+                    onCancel={() => setDeleteTarget(null)}
+                    onConfirm={handleDelete}
+                />
             </div>
         </div>
     );

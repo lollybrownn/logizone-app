@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { Sidebar } from "../../components/Sidebar";
-import { Plus, PackageSearch } from "lucide-react";
+import { Plus, PackageSearch, Trash2 } from "lucide-react";
 import { ModalTambahBarang } from "../../components/ModalTambahBarang";
 import { barangApi } from "../../api/barangApi";
 import { useToast } from "../../context/ToastContext";
 import Pagination from "../../components/common/Pagination";
+import DeleteConfirmModal from "../../components/common/DeleteConfirmModal";
+import { useZones } from "../../context/ZoneContext";
 
 const PER_PAGE = 10;
 
@@ -13,11 +15,14 @@ const formatDate = (value) =>
 
 export const PendataanBarang = () => {
     const toast = useToast();
+    const { refresh: refreshZones } = useZones();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [dataBarang, setDataBarang] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [page, setPage] = useState(1);
     const [pagination, setPagination] = useState({ total: 0, total_pages: 1 });
+    const [deleteTarget, setDeleteTarget] = useState(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     const loadData = useCallback(async (targetPage = page) => {
         setIsLoading(true);
@@ -44,6 +49,30 @@ export const PendataanBarang = () => {
             loadData(1);
         } else {
             setPage(1);
+        }
+    }
+
+    async function handleDelete() {
+        if (!deleteTarget) return;
+        setIsDeleting(true);
+        try {
+            await barangApi.remove(deleteTarget.id_barang);
+            toast.success("Barang berhasil dihapus");
+            setDeleteTarget(null);
+            // Deleting a placed item frees its zone capacity on the backend,
+            // so refresh the shared zone cache too
+            refreshZones();
+            // If this was the last row on the current page, step back a page
+            if (dataBarang.length === 1 && page > 1) {
+                setPage(page - 1);
+            } else {
+                loadData(page);
+            }
+        } catch (err) {
+            toast.error(err.message || "Gagal menghapus barang");
+            setDeleteTarget(null);
+        } finally {
+            setIsDeleting(false);
         }
     }
 
@@ -115,7 +144,16 @@ export const PendataanBarang = () => {
                                             </td>
                                             <td className="px-6 py-5 text-center text-gray-500">{formatDate(item.tgl_masuk)}</td>
                                             <td className="px-6 py-5 text-center">
-                                                <span className="text-gray-500 text-xs font-medium">{item.nama_zona || "Belum ditempatkan"}</span>
+                                                <div className="flex items-center justify-center gap-3">
+                                                    <span className="text-gray-500 text-xs font-medium">{item.nama_zona || "Belum ditempatkan"}</span>
+                                                    <button
+                                                        onClick={() => setDeleteTarget(item)}
+                                                        className="text-red-500 hover:text-red-700"
+                                                        aria-label={`Hapus barang ${item.no_resi}`}
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))
@@ -148,6 +186,19 @@ export const PendataanBarang = () => {
                             isOpen={isModalOpen}
                             onClose={() => setIsModalOpen(false)}
                             onCreated={handleCreated}
+                        />
+
+                        <DeleteConfirmModal
+                            isOpen={Boolean(deleteTarget)}
+                            title="Hapus Barang?"
+                            description={
+                                deleteTarget
+                                    ? `Barang "${deleteTarget.label_barang}" (${deleteTarget.no_resi}) akan dihapus permanen.${deleteTarget.id_zona ? " Kapasitas zona terkait akan dikembalikan secara otomatis." : ""}`
+                                    : ""
+                            }
+                            isDeleting={isDeleting}
+                            onCancel={() => setDeleteTarget(null)}
+                            onConfirm={handleDelete}
                         />
                     </div>
                 </div>

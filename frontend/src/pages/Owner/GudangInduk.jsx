@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Sidebar } from "../../components/Sidebar";
-import { Plus, X } from "lucide-react";
+import { Plus, X, Trash2 } from "lucide-react";
 import { warehouseApi } from "../../api/warehouseApi";
 import { useToast } from "../../context/ToastContext";
 import Pagination, { paginate } from "../../components/common/Pagination";
+import DeleteConfirmModal from "../../components/common/DeleteConfirmModal";
 
 const PER_PAGE = 10;
 
@@ -131,6 +132,8 @@ export const GudangInduk = () => {
     const [warehouses, setWarehouses] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [modalState, setModalState] = useState(null);
+    const [deleteTarget, setDeleteTarget] = useState(null);
+    const [isDeleting, setIsDeleting] = useState(false);
     const [page, setPage] = useState(1);
     const totalPages = Math.max(1, Math.ceil(warehouses.length / PER_PAGE));
     const pageItems = useMemo(() => paginate(warehouses, page, PER_PAGE), [warehouses, page]);
@@ -147,6 +150,26 @@ export const GudangInduk = () => {
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    async function handleDelete() {
+        if (!deleteTarget) return;
+        setIsDeleting(true);
+        try {
+            await warehouseApi.remove(deleteTarget.id);
+            toast.success("Gudang induk berhasil dihapus");
+            setDeleteTarget(null);
+            if (pageItems.length === 1 && page > 1) {
+                setPage(page - 1);
+            }
+            loadData();
+        } catch (err) {
+            // Backend returns 409 with a clear message when items still reference this warehouse
+            toast.error(err.message || "Gagal menghapus gudang induk");
+            setDeleteTarget(null);
+        } finally {
+            setIsDeleting(false);
+        }
+    }
 
     useEffect(() => {
         loadData();
@@ -199,9 +222,18 @@ export const GudangInduk = () => {
                                         </td>
                                         <td className="px-6 py-5 text-gray-500">{formatDate(w.created_at)}</td>
                                         <td className="px-6 py-5 text-center">
-                                            <button onClick={() => setModalState(w)} className="text-blue-600 font-semibold hover:underline">
-                                                Edit
-                                            </button>
+                                            <div className="flex items-center justify-center gap-3">
+                                                <button onClick={() => setModalState(w)} className="text-blue-600 font-semibold hover:underline">
+                                                    Edit
+                                                </button>
+                                                <button
+                                                    onClick={() => setDeleteTarget(w)}
+                                                    className="text-red-500 hover:text-red-700"
+                                                    aria-label={`Hapus gudang ${w.nama}`}
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))
@@ -229,6 +261,19 @@ export const GudangInduk = () => {
                         }}
                     />
                 )}
+
+                <DeleteConfirmModal
+                    isOpen={Boolean(deleteTarget)}
+                    title="Hapus Gudang Induk?"
+                    description={
+                        deleteTarget
+                            ? `Gudang induk "${deleteTarget.nama}" akan dihapus permanen. Tidak dapat dihapus jika masih ada barang yang terhubung.`
+                            : ""
+                    }
+                    isDeleting={isDeleting}
+                    onCancel={() => setDeleteTarget(null)}
+                    onConfirm={handleDelete}
+                />
             </div>
         </div>
     );
