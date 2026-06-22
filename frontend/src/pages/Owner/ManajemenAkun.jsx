@@ -1,8 +1,13 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Sidebar } from "../../components/Sidebar";
-import { Plus, X } from "lucide-react";
+import { Plus, X, Trash2 } from "lucide-react";
 import { userApi } from "../../api/userApi";
 import { useToast } from "../../context/ToastContext";
+import { useAuth } from "../../context/AuthContext";
+import Pagination, { paginate } from "../../components/common/Pagination";
+import DeleteConfirmModal from "../../components/common/DeleteConfirmModal";
+
+const PER_PAGE = 10;
 
 const ROLES = ["Owner", "Staff Operasional", "Staff Gudang"];
 
@@ -136,9 +141,16 @@ function AccountModal({ account, onClose, onSaved }) {
 
 export const ManajemenAkun = () => {
     const toast = useToast();
+    const { user: currentUser } = useAuth();
     const [users, setUsers] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [modalState, setModalState] = useState(null);
+    const [deleteTarget, setDeleteTarget] = useState(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [page, setPage] = useState(1);
+    const totalPages = Math.max(1, Math.ceil(users.length / PER_PAGE));
+    const pageItems = useMemo(() => paginate(users, page, PER_PAGE), [users, page]);
+    const ownerCount = useMemo(() => users.filter((u) => u.role === "Owner").length, [users]);
 
     const loadData = useCallback(async () => {
         setIsLoading(true);
@@ -152,6 +164,26 @@ export const ManajemenAkun = () => {
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    async function handleDelete() {
+        if (!deleteTarget) return;
+        setIsDeleting(true);
+        try {
+            await userApi.remove(deleteTarget.id);
+            toast.success("Akun berhasil dihapus");
+            setDeleteTarget(null);
+            if (pageItems.length === 1 && page > 1) {
+                setPage(page - 1);
+            }
+            loadData();
+        } catch (err) {
+            // Backend blocks self-delete and deleting the last remaining Owner with a clear message
+            toast.error(err.message || "Gagal menghapus akun");
+            setDeleteTarget(null);
+        } finally {
+            setIsDeleting(false);
+        }
+    }
 
     useEffect(() => {
         loadData();
@@ -188,8 +220,8 @@ export const ManajemenAkun = () => {
                         <tbody className="text-[14px]">
                             {isLoading ? (
                                 <tr><td colSpan="4" className="px-6 py-20 text-center text-gray-400">Memuat data...</td></tr>
-                            ) : users.length > 0 ? (
-                                users.map((u) => (
+                            ) : pageItems.length > 0 ? (
+                                pageItems.map((u) => (
                                     <tr key={u.id} className="border-t border-gray-50 hover:bg-gray-50/50">
                                         <td className="px-8 py-5 font-bold text-gray-800">{u.username}</td>
                                         <td className="px-6 py-5">
@@ -203,9 +235,32 @@ export const ManajemenAkun = () => {
                                             </span>
                                         </td>
                                         <td className="px-6 py-5 text-center">
-                                            <button onClick={() => setModalState(u)} className="text-blue-600 font-semibold hover:underline">
-                                                Edit
-                                            </button>
+                                            <div className="flex items-center justify-center gap-3">
+                                                <button onClick={() => setModalState(u)} className="text-blue-600 font-semibold hover:underline">
+                                                    Edit
+                                                </button>
+                                                {(() => {
+                                                    const isSelf = currentUser && currentUser.id === u.id;
+                                                    const isLastOwner = u.role === "Owner" && ownerCount <= 1;
+                                                    const disabled = isSelf || isLastOwner;
+                                                    const title = isSelf
+                                                        ? "Tidak dapat menghapus akun Anda sendiri"
+                                                        : isLastOwner
+                                                            ? "Tidak dapat menghapus Owner terakhir"
+                                                            : "Hapus akun";
+                                                    return (
+                                                        <button
+                                                            onClick={() => !disabled && setDeleteTarget(u)}
+                                                            disabled={disabled}
+                                                            title={title}
+                                                            className={disabled ? "text-gray-300 cursor-not-allowed" : "text-red-500 hover:text-red-700"}
+                                                            aria-label={`Hapus akun ${u.username}`}
+                                                        >
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    );
+                                                })()}
+                                            </div>
                                         </td>
                                     </tr>
                                 ))
@@ -214,6 +269,13 @@ export const ManajemenAkun = () => {
                             )}
                         </tbody>
                     </table>
+                    <Pagination
+                        currentPage={page}
+                        totalPages={totalPages}
+                        totalItems={users.length}
+                        perPage={PER_PAGE}
+                        onPageChange={setPage}
+                    />
                 </div>
 
                 {modalState && (
@@ -226,6 +288,19 @@ export const ManajemenAkun = () => {
                         }}
                     />
                 )}
+
+                <DeleteConfirmModal
+                    isOpen={Boolean(deleteTarget)}
+                    title="Hapus Akun?"
+                    description={
+                        deleteTarget
+                            ? `Akun "${deleteTarget.username}" (${deleteTarget.role}) akan dihapus permanen.`
+                            : ""
+                    }
+                    isDeleting={isDeleting}
+                    onCancel={() => setDeleteTarget(null)}
+                    onConfirm={handleDelete}
+                />
             </div>
         </div>
     );

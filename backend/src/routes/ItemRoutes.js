@@ -18,6 +18,6 @@ router.get(
     ItemController.showById,
 );
 router.put("/:id", authenticate, authorize("Staff Operasional", "Staff Gudang"), ItemController.updateBarang)
-router.delete("/:id", authenticate, authorize("Owner"), ItemController.deleteBarang);
+router.delete("/:id", authenticate, authorize("Staff Operasional", "Owner"), ItemController.deleteBarang);
 
 module.exports = router;

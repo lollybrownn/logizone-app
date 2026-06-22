@@ -5,13 +5,13 @@ const VALID_ROLES = ["Owner", "Staff Operasional", "Staff Gudang"];
 
 const UserModel = {
   async findAll() {
-    const sql = "SELECT id,username,role,status FROM users ORDER BY id ASC";
+    const sql = "SELECT id,username,role,status,created_at FROM users ORDER BY id ASC";
     const results = await db.query(sql);
     return results.rows;
   },
   async findByUsername(username) {
     const sql =
-      "SELECT id,username, password, role from users where username = $1";
+      "SELECT id,username, password, role, status from users where username = $1";
     const result = await db.query(sql, [username]);
     return result.rows[0] || null;
   },

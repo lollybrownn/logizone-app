@@ -7,19 +7,19 @@ export const zoneApi = {
 
   getById: (id) => apiClient.get(`/zones/${id}`),
 
-  create: ({ kodeZona, namaZona, kapasitasMaks, deskripsi }) =>
+  create: ({ kodeZona, namaZona, kapasitas, deskripsi }) =>
     apiClient.post("/zones", {
       kode_zona: kodeZona,
       nama_zona: namaZona,
-      kapasitas_maks: kapasitasMaks,
+      kapasitas,
       deskripsi,
     }),
 
-  update: (id, { kodeZona, namaZona, kapasitasMaks, deskripsi }) =>
+  update: (id, { kodeZona, namaZona, kapasitas, deskripsi }) =>
     apiClient.put(`/zones/${id}`, {
       kode_zona: kodeZona,
       nama_zona: namaZona,
-      kapasitas_maks: kapasitasMaks,
+      kapasitas,
       deskripsi,
     }),
 
